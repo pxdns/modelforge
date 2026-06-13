@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("launcherApi", {
   getSettings: () => ipcRenderer.invoke("settings:get"),
+  updateSettings: (patch) => ipcRenderer.invoke("settings:update", patch),
   setGameDir: (gameDir) => ipcRenderer.invoke("settings:set-game-dir", gameDir),
   selectDirectory: () => ipcRenderer.invoke("dialog:select-directory"),
   selectJava: () => ipcRenderer.invoke("dialog:select-java"),

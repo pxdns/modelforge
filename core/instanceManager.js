@@ -49,8 +49,15 @@ class InstanceManager {
       id,
       name: payload.name || "New Instance",
       versionId: payload.versionId,
-      ramMb: Number(payload.ramMb || 2048),
+      ramMb: Number(payload.ramMb || this.settingsStore.get("ramMb") || 4096),
+      autoMemory: payload.autoMemory ?? this.settingsStore.get("autoMemory") ?? true,
       javaPath: payload.javaPath || "",
+      javaArgs: payload.javaArgs || this.settingsStore.get("javaArgs") || "",
+      minecraftArgs: payload.minecraftArgs || this.settingsStore.get("minecraftArgs") || "",
+      wrapperCommand: payload.wrapperCommand || this.settingsStore.get("wrapperCommand") || "",
+      windowWidth: Number(payload.windowWidth || this.settingsStore.get("windowWidth") || 925),
+      windowHeight: Number(payload.windowHeight || this.settingsStore.get("windowHeight") || 530),
+      fullscreen: payload.fullscreen ?? this.settingsStore.get("fullscreen") ?? false,
       offlineUsername: payload.offlineUsername || "Player",
       instanceDir,
       minecraftDir,
@@ -72,6 +79,8 @@ class InstanceManager {
       ...instance,
       ...patch,
       ramMb: Number(patch.ramMb ?? instance.ramMb),
+      windowWidth: Number(patch.windowWidth ?? instance.windowWidth ?? 925),
+      windowHeight: Number(patch.windowHeight ?? instance.windowHeight ?? 530),
       updatedAt: new Date().toISOString()
     };
     await writeJson(path.join(this.instancesDir, instanceId, "instance.json"), updated);

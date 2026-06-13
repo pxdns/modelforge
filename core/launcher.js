@@ -74,6 +74,9 @@ class MinecraftLauncher extends EventEmitter {
     const jvmArgs = [];
     jvmArgs.push(`-Xmx${instance.ramMb || 2048}M`);
     jvmArgs.push(`-Xms${Math.min(512, instance.ramMb || 2048)}M`);
+    if (instance.javaArgs) {
+      jvmArgs.push(...splitArgs(instance.javaArgs));
+    }
 
     if (versionJson.arguments?.jvm) {
       jvmArgs.push(...expandArguments(versionJson.arguments.jvm, replacements));
@@ -86,6 +89,12 @@ class MinecraftLauncher extends EventEmitter {
     const gameArgs = versionJson.arguments?.game
       ? expandArguments(versionJson.arguments.game, replacements)
       : expandLegacyGameArguments(versionJson.minecraftArguments || "", replacements);
+    if (instance.fullscreen) {
+      gameArgs.push("--fullscreen");
+    }
+    if (instance.minecraftArgs) {
+      gameArgs.push(...splitArgs(instance.minecraftArgs));
+    }
 
     return [
       ...jvmArgs.map((arg) => replaceTokens(arg, replacements)),
@@ -115,6 +124,8 @@ class MinecraftLauncher extends EventEmitter {
       natives_directory: nativesDir,
       launcher_name: "ModelForge",
       launcher_version: "0.1.0",
+      resolution_width: String(instance.windowWidth || 925),
+      resolution_height: String(instance.windowHeight || 530),
       classpath,
       library_directory: path.join(this.settingsStore.get("gameDir"), "libraries"),
       classpath_separator: process.platform === "win32" ? ";" : ":",
@@ -143,6 +154,11 @@ function expandLegacyGameArguments(argumentString, replacements) {
     .split(" ")
     .filter(Boolean)
     .map((arg) => replaceTokens(arg, replacements));
+}
+
+function splitArgs(value) {
+  const matches = String(value || "").match(/"([^"]*)"|'([^']*)'|[^\s]+/g) || [];
+  return matches.map((item) => item.replace(/^["']|["']$/g, ""));
 }
 
 function replaceTokens(value, replacements) {

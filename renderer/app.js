@@ -1,62 +1,130 @@
+const DEFAULTS = {
+  separateFoldersMode: "none",
+  ramMb: 4096,
+  autoMemory: true,
+  javaMode: "custom",
+  javaPath: "",
+  javaArgs: "",
+  minecraftArgs: "",
+  wrapperCommand: "",
+  updateSslCertificates: true,
+  improvedJvmArguments: "default",
+  windowWidth: 925,
+  windowHeight: 530,
+  fullscreen: false,
+  versionFilters: {
+    remote: true,
+    modified: true,
+    alpha: false,
+    experimental: true,
+    installedOnly: false,
+    snapshots: true,
+    beta: false,
+    launchers: false,
+    oldReleases: true
+  },
+  suggestServers: false,
+  theme: "dark"
+};
+
 const state = {
   settings: null,
   versions: [],
   instances: [],
   selectedInstance: null,
-  launching: false
+  launching: false,
+  detectedJava: null
 };
 
+const $ = (selector) => document.querySelector(selector);
+
 const el = {
-  createInstanceButton: document.querySelector("#createInstanceButton"),
-  instanceList: document.querySelector("#instanceList"),
-  selectedTitle: document.querySelector("#selectedTitle"),
-  selectedSubtitle: document.querySelector("#selectedSubtitle"),
-  refreshVersionsButton: document.querySelector("#refreshVersionsButton"),
-  gameDirInput: document.querySelector("#gameDirInput"),
-  selectGameDirButton: document.querySelector("#selectGameDirButton"),
-  usernameInput: document.querySelector("#usernameInput"),
-  instanceForm: document.querySelector("#instanceForm"),
-  instanceNameInput: document.querySelector("#instanceNameInput"),
-  versionSelect: document.querySelector("#versionSelect"),
-  ramSlider: document.querySelector("#ramSlider"),
-  ramLabel: document.querySelector("#ramLabel"),
-  javaPathInput: document.querySelector("#javaPathInput"),
-  selectJavaButton: document.querySelector("#selectJavaButton"),
-  detectJavaButton: document.querySelector("#detectJavaButton"),
-  saveInstanceButton: document.querySelector("#saveInstanceButton"),
-  playButton: document.querySelector("#playButton"),
-  stopButton: document.querySelector("#stopButton"),
-  progressLabel: document.querySelector("#progressLabel"),
-  progressPercent: document.querySelector("#progressPercent"),
-  downloadProgress: document.querySelector("#downloadProgress"),
-  clearConsoleButton: document.querySelector("#clearConsoleButton"),
-  logConsole: document.querySelector("#logConsole")
+  tabs: document.querySelectorAll(".tab"),
+  views: document.querySelectorAll(".view"),
+  themeToggle: $("#themeToggle"),
+  gameDirInput: $("#gameDirInput"),
+  selectGameDirButton: $("#selectGameDirButton"),
+  separateFoldersSelect: $("#separateFoldersSelect"),
+  windowWidthInput: $("#windowWidthInput"),
+  windowHeightInput: $("#windowHeightInput"),
+  fullscreenCheckbox: $("#fullscreenCheckbox"),
+  filterRemote: $("#filterRemote"),
+  filterModified: $("#filterModified"),
+  filterAlpha: $("#filterAlpha"),
+  filterExperimental: $("#filterExperimental"),
+  filterInstalledOnly: $("#filterInstalledOnly"),
+  filterSnapshots: $("#filterSnapshots"),
+  filterBeta: $("#filterBeta"),
+  filterLaunchers: $("#filterLaunchers"),
+  filterOldReleases: $("#filterOldReleases"),
+  javaModeSelect: $("#javaModeSelect"),
+  openJavaSettingsButton: $("#openJavaSettingsButton"),
+  ramSlider: $("#ramSlider"),
+  ramNumberInput: $("#ramNumberInput"),
+  autoMemoryCheckbox: $("#autoMemoryCheckbox"),
+  suggestServersCheckbox: $("#suggestServersCheckbox"),
+  saveSettingsButton: $("#saveSettingsButton"),
+  resetSettingsButton: $("#resetSettingsButton"),
+  homeButton: $("#homeButton"),
+  createInstanceButton: $("#createInstanceButton"),
+  instanceList: $("#instanceList"),
+  selectedTitle: $("#selectedTitle"),
+  selectedSubtitle: $("#selectedSubtitle"),
+  refreshVersionsButton: $("#refreshVersionsButton"),
+  instanceForm: $("#instanceForm"),
+  instanceNameInput: $("#instanceNameInput"),
+  usernameInput: $("#usernameInput"),
+  versionSelect: $("#versionSelect"),
+  javaPathInput: $("#javaPathInput"),
+  selectJavaButton: $("#selectJavaButton"),
+  detectJavaButton: $("#detectJavaButton"),
+  playButton: $("#playButton"),
+  stopButton: $("#stopButton"),
+  progressLabel: $("#progressLabel"),
+  progressPercent: $("#progressPercent"),
+  downloadProgress: $("#downloadProgress"),
+  clearConsoleButton: $("#clearConsoleButton"),
+  logConsole: $("#logConsole"),
+  javaDialog: $("#javaDialog"),
+  dialogJavaPathInput: $("#dialogJavaPathInput"),
+  dialogBrowseJavaButton: $("#dialogBrowseJavaButton"),
+  detectedJavaLabel: $("#detectedJavaLabel"),
+  javaArgsInput: $("#javaArgsInput"),
+  updateSslCheckbox: $("#updateSslCheckbox"),
+  improvedJvmSelect: $("#improvedJvmSelect"),
+  minecraftArgsInput: $("#minecraftArgsInput"),
+  wrapperCommandInput: $("#wrapperCommandInput"),
+  doneJavaButton: $("#doneJavaButton")
 };
 
 async function boot() {
   wireEvents();
-  appendLog("ModelForge ready.");
-  state.settings = await window.launcherApi.getSettings();
-  el.gameDirInput.value = state.settings.gameDir;
-  el.usernameInput.value = state.settings.offlineUsername || "Player";
+  state.settings = normalizeSettings(await window.launcherApi.getSettings());
+  applyTheme();
+  renderSettings();
   await loadVersions(false);
   await loadInstances();
-  const detected = await window.launcherApi.detectJava();
-  if (detected.ok && !el.javaPathInput.value) {
-    appendLog(`Detected Java ${detected.version}: ${detected.javaPath}`);
-  } else if (!detected.ok) {
-    appendLog(detected.message);
-  }
+  await detectJava(true);
+  appendLog("ModelForge ready.");
 }
 
 function wireEvents() {
-  el.refreshVersionsButton.addEventListener("click", async () => loadVersions(true));
+  el.tabs.forEach((tab) => tab.addEventListener("click", () => showView(tab.dataset.view)));
+  el.themeToggle.addEventListener("click", toggleTheme);
   el.selectGameDirButton.addEventListener("click", selectGameDir);
+  el.saveSettingsButton.addEventListener("click", saveSettings);
+  el.resetSettingsButton.addEventListener("click", resetSettings);
+  el.homeButton.addEventListener("click", () => showView("launcherView"));
+  el.ramSlider.addEventListener("input", () => syncRam("slider"));
+  el.ramNumberInput.addEventListener("input", () => syncRam("number"));
+  el.openJavaSettingsButton.addEventListener("click", openJavaDialog);
+  el.dialogBrowseJavaButton.addEventListener("click", selectJavaForDialog);
+  el.doneJavaButton.addEventListener("click", closeJavaDialog);
   el.createInstanceButton.addEventListener("click", createInstance);
+  el.refreshVersionsButton.addEventListener("click", async () => loadVersions(true));
   el.instanceForm.addEventListener("submit", saveSelectedInstance);
-  el.ramSlider.addEventListener("input", updateRamLabel);
   el.selectJavaButton.addEventListener("click", selectJava);
-  el.detectJavaButton.addEventListener("click", detectJava);
+  el.detectJavaButton.addEventListener("click", () => detectJava(false));
   el.playButton.addEventListener("click", playSelectedInstance);
   el.stopButton.addEventListener("click", stopLaunch);
   el.clearConsoleButton.addEventListener("click", () => {
@@ -73,16 +141,161 @@ function wireEvents() {
   window.launcherApi.onProgress(updateProgress);
 }
 
+function normalizeSettings(settings) {
+  return {
+    ...DEFAULTS,
+    ...settings,
+    versionFilters: {
+      ...DEFAULTS.versionFilters,
+      ...(settings.versionFilters || {})
+    }
+  };
+}
+
+function showView(id) {
+  el.tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.view === id));
+  el.views.forEach((view) => view.classList.toggle("active", view.id === id));
+}
+
+async function toggleTheme() {
+  state.settings.theme = state.settings.theme === "dark" ? "light" : "dark";
+  applyTheme();
+  await window.launcherApi.updateSettings({ theme: state.settings.theme });
+}
+
+function applyTheme() {
+  document.body.classList.toggle("dark", state.settings.theme !== "light");
+  el.themeToggle.textContent = state.settings.theme === "light" ? "Dark mode" : "Light mode";
+}
+
+function renderSettings() {
+  const settings = state.settings;
+  el.gameDirInput.value = settings.gameDir || "";
+  el.separateFoldersSelect.value = settings.separateFoldersMode;
+  el.windowWidthInput.value = settings.windowWidth;
+  el.windowHeightInput.value = settings.windowHeight;
+  el.fullscreenCheckbox.checked = settings.fullscreen;
+  el.filterRemote.checked = settings.versionFilters.remote;
+  el.filterModified.checked = settings.versionFilters.modified;
+  el.filterAlpha.checked = settings.versionFilters.alpha;
+  el.filterExperimental.checked = settings.versionFilters.experimental;
+  el.filterInstalledOnly.checked = settings.versionFilters.installedOnly;
+  el.filterSnapshots.checked = settings.versionFilters.snapshots;
+  el.filterBeta.checked = settings.versionFilters.beta;
+  el.filterLaunchers.checked = settings.versionFilters.launchers;
+  el.filterOldReleases.checked = settings.versionFilters.oldReleases;
+  el.javaModeSelect.value = settings.javaMode;
+  el.ramSlider.value = settings.ramMb;
+  el.ramNumberInput.value = settings.ramMb;
+  el.autoMemoryCheckbox.checked = settings.autoMemory;
+  el.suggestServersCheckbox.checked = settings.suggestServers;
+  el.dialogJavaPathInput.value = settings.javaPath || "";
+  el.javaArgsInput.value = settings.javaArgs || "";
+  el.updateSslCheckbox.checked = settings.updateSslCertificates;
+  el.improvedJvmSelect.value = settings.improvedJvmArguments;
+  el.minecraftArgsInput.value = settings.minecraftArgs || "";
+  el.wrapperCommandInput.value = settings.wrapperCommand || "";
+}
+
+function collectSettings() {
+  return normalizeSettings({
+    ...state.settings,
+    gameDir: el.gameDirInput.value.trim(),
+    separateFoldersMode: el.separateFoldersSelect.value,
+    windowWidth: Number(el.windowWidthInput.value || 925),
+    windowHeight: Number(el.windowHeightInput.value || 530),
+    fullscreen: el.fullscreenCheckbox.checked,
+    versionFilters: {
+      remote: el.filterRemote.checked,
+      modified: el.filterModified.checked,
+      alpha: el.filterAlpha.checked,
+      experimental: el.filterExperimental.checked,
+      installedOnly: el.filterInstalledOnly.checked,
+      snapshots: el.filterSnapshots.checked,
+      beta: el.filterBeta.checked,
+      launchers: el.filterLaunchers.checked,
+      oldReleases: el.filterOldReleases.checked
+    },
+    javaMode: el.javaModeSelect.value,
+    javaPath: el.dialogJavaPathInput.value.trim(),
+    javaArgs: el.javaArgsInput.value.trim(),
+    minecraftArgs: el.minecraftArgsInput.value.trim(),
+    wrapperCommand: el.wrapperCommandInput.value.trim(),
+    updateSslCertificates: el.updateSslCheckbox.checked,
+    improvedJvmArguments: el.improvedJvmSelect.value,
+    ramMb: Number(el.ramNumberInput.value || 4096),
+    autoMemory: el.autoMemoryCheckbox.checked,
+    suggestServers: el.suggestServersCheckbox.checked
+  });
+}
+
+async function saveSettings() {
+  state.settings = collectSettings();
+  await window.launcherApi.updateSettings(state.settings);
+  await loadInstances();
+  appendLog("Settings saved.");
+}
+
+async function resetSettings() {
+  state.settings = normalizeSettings({ ...state.settings, ...DEFAULTS });
+  renderSettings();
+  await saveSettings();
+}
+
+function syncRam(source) {
+  if (source === "slider") el.ramNumberInput.value = el.ramSlider.value;
+  if (source === "number") el.ramSlider.value = el.ramNumberInput.value;
+}
+
+async function selectGameDir() {
+  const gameDir = await window.launcherApi.selectDirectory();
+  if (!gameDir) return;
+  el.gameDirInput.value = gameDir;
+  state.settings.gameDir = gameDir;
+  await saveSettings();
+  await loadVersions(false);
+}
+
+function openJavaDialog() {
+  document.querySelector(`input[name="javaChoice"][value="${el.javaModeSelect.value}"]`).checked = true;
+  el.javaDialog.showModal();
+}
+
+async function closeJavaDialog() {
+  const selected = document.querySelector('input[name="javaChoice"]:checked')?.value || "custom";
+  el.javaModeSelect.value = selected;
+  await saveSettings();
+  el.javaDialog.close();
+}
+
+async function selectJavaForDialog() {
+  const javaPath = await window.launcherApi.selectJava();
+  if (javaPath) {
+    el.dialogJavaPathInput.value = javaPath;
+    el.javaPathInput.value = javaPath;
+  }
+}
+
 async function loadVersions(forceRefresh) {
   try {
     appendLog(forceRefresh ? "Refreshing version index..." : "Loading versions...");
     const manifest = await window.launcherApi.listVersions(forceRefresh);
-    state.versions = manifest.versions.filter((version) => version.type === "release");
+    state.versions = filterVersions(manifest.versions || []);
     renderVersions();
-    appendLog(`Loaded ${state.versions.length} release builds.`);
+    appendLog(`Loaded ${state.versions.length} versions.`);
   } catch (error) {
     appendLog(`Version load failed: ${error.message}`);
   }
+}
+
+function filterVersions(versions) {
+  const filters = state.settings.versionFilters;
+  return versions.filter((version) => {
+    if (version.type === "snapshot") return filters.snapshots;
+    if (version.type === "old_beta") return filters.beta;
+    if (version.type === "old_alpha") return filters.alpha;
+    return true;
+  });
 }
 
 async function loadInstances() {
@@ -116,13 +329,12 @@ function renderInstances() {
 
   for (const instance of state.instances) {
     const button = document.createElement("button");
-    button.className = `instance-item ${state.selectedInstance?.id === instance.id ? "active" : ""}`;
+    button.className = "instance-item";
     button.innerHTML = `<strong></strong><span></span>`;
     button.querySelector("strong").textContent = instance.name;
     button.querySelector("span").textContent = instance.versionId || "No version";
     button.addEventListener("click", () => {
       state.selectedInstance = instance;
-      renderInstances();
       renderSelectedInstance();
     });
     el.instanceList.append(button);
@@ -142,21 +354,8 @@ function renderSelectedInstance() {
   el.selectedSubtitle.textContent = instance.minecraftDir;
   el.instanceNameInput.value = instance.name;
   el.versionSelect.value = instance.versionId;
-  el.ramSlider.value = instance.ramMb || 2048;
-  el.javaPathInput.value = instance.javaPath || "";
   el.usernameInput.value = instance.offlineUsername || state.settings.offlineUsername || "Player";
-  updateRamLabel();
-}
-
-async function selectGameDir() {
-  const gameDir = await window.launcherApi.selectDirectory();
-  if (!gameDir) return;
-  state.settings = await window.launcherApi.setGameDir(gameDir);
-  el.gameDirInput.value = gameDir;
-  state.selectedInstance = null;
-  await loadVersions(false);
-  await loadInstances();
-  appendLog(`Game directory set to ${gameDir}`);
+  el.javaPathInput.value = instance.javaPath || state.settings.javaPath || "";
 }
 
 async function createInstance() {
@@ -165,26 +364,43 @@ async function createInstance() {
   const instance = await window.launcherApi.createInstance({
     name: latest ? `Minecraft ${latest}` : "New Instance",
     versionId: latest,
-    ramMb: Number(el.ramSlider.value || 2048),
-    javaPath: el.javaPathInput.value.trim(),
-    offlineUsername: el.usernameInput.value.trim() || "Player"
+    ramMb: state.settings.ramMb,
+    autoMemory: state.settings.autoMemory,
+    javaPath: state.settings.javaPath,
+    javaArgs: state.settings.javaArgs,
+    minecraftArgs: state.settings.minecraftArgs,
+    wrapperCommand: state.settings.wrapperCommand,
+    windowWidth: state.settings.windowWidth,
+    windowHeight: state.settings.windowHeight,
+    fullscreen: state.settings.fullscreen,
+    offlineUsername: el.usernameInput.value.trim() || state.settings.offlineUsername || "Player"
   });
   state.selectedInstance = instance;
   await loadInstances();
+  showView("launcherView");
   appendLog(`Created instance ${instance.name}.`);
 }
 
 async function saveSelectedInstance(event) {
   event.preventDefault();
   if (!state.selectedInstance) return;
+  state.settings = collectSettings();
 
   const updated = await window.launcherApi.updateInstance(state.selectedInstance.id, {
     name: el.instanceNameInput.value.trim() || state.selectedInstance.name,
     versionId: el.versionSelect.value,
-    ramMb: Number(el.ramSlider.value),
-    javaPath: el.javaPathInput.value.trim(),
+    ramMb: state.settings.ramMb,
+    autoMemory: state.settings.autoMemory,
+    javaPath: el.javaPathInput.value.trim() || state.settings.javaPath,
+    javaArgs: state.settings.javaArgs,
+    minecraftArgs: state.settings.minecraftArgs,
+    wrapperCommand: state.settings.wrapperCommand,
+    windowWidth: state.settings.windowWidth,
+    windowHeight: state.settings.windowHeight,
+    fullscreen: state.settings.fullscreen,
     offlineUsername: el.usernameInput.value.trim() || "Player"
   });
+  await window.launcherApi.updateSettings(state.settings);
   state.selectedInstance = updated;
   await loadInstances();
   appendLog(`Saved instance ${updated.name}.`);
@@ -192,16 +408,25 @@ async function saveSelectedInstance(event) {
 
 async function selectJava() {
   const javaPath = await window.launcherApi.selectJava();
-  if (javaPath) el.javaPathInput.value = javaPath;
+  if (javaPath) {
+    el.javaPathInput.value = javaPath;
+    el.dialogJavaPathInput.value = javaPath;
+  }
 }
 
-async function detectJava() {
+async function detectJava(quiet) {
   const detected = await window.launcherApi.detectJava();
+  state.detectedJava = detected;
   if (detected.ok) {
-    el.javaPathInput.value = detected.javaPath;
-    appendLog(`Detected Java ${detected.version}: ${detected.javaPath}`);
+    el.detectedJavaLabel.textContent = `Detected Java ${detected.version}`;
+    if (!el.javaPathInput.value && !el.dialogJavaPathInput.value) {
+      el.javaPathInput.value = detected.javaPath;
+      el.dialogJavaPathInput.value = detected.javaPath;
+    }
+    if (!quiet) appendLog(`Detected Java ${detected.version}: ${detected.javaPath}`);
   } else {
-    appendLog(detected.message);
+    el.detectedJavaLabel.textContent = "Java was not detected";
+    if (!quiet) appendLog(detected.message);
   }
 }
 
@@ -226,10 +451,6 @@ async function playSelectedInstance() {
 async function stopLaunch() {
   await window.launcherApi.stop();
   appendLog("Stop requested.");
-}
-
-function updateRamLabel() {
-  el.ramLabel.textContent = `${el.ramSlider.value} MB`;
 }
 
 function updateProgress(payload) {

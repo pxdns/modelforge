@@ -15,9 +15,33 @@ class SettingsStore {
       launcherDir: this.launcherDir,
       instancesDir: path.join(process.cwd(), "instances"),
       gameDir: defaultMinecraftDir(),
+      separateFoldersMode: "none",
       offlineUsername: "Player",
-      ramMb: 2048,
-      javaPath: ""
+      ramMb: 4096,
+      autoMemory: true,
+      javaMode: "custom",
+      javaPath: "",
+      javaArgs: "",
+      minecraftArgs: "",
+      wrapperCommand: "",
+      updateSslCertificates: true,
+      improvedJvmArguments: "default",
+      windowWidth: 925,
+      windowHeight: 530,
+      fullscreen: false,
+      versionFilters: {
+        remote: true,
+        modified: true,
+        alpha: false,
+        experimental: true,
+        installedOnly: false,
+        snapshots: true,
+        beta: false,
+        launchers: false,
+        oldReleases: true
+      },
+      suggestServers: false,
+      theme: "dark"
     });
     await this.save();
   }

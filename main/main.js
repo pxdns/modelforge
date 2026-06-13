@@ -49,6 +49,11 @@ function createProgressSender(event, channel) {
 
 ipcMain.handle("settings:get", async () => settings.getAll());
 
+ipcMain.handle("settings:update", async (_event, patch) => {
+  await settings.setMany(patch);
+  return settings.getAll();
+});
+
 ipcMain.handle("settings:set-game-dir", async (_event, gameDir) => {
   await settings.setGameDir(gameDir);
   await instanceManager.init();
