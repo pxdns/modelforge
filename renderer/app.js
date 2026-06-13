@@ -202,7 +202,10 @@ async function toggleTheme() {
 
 function applyTheme() {
   document.body.classList.toggle("light", state.settings.theme === "light");
-  el.themeToggle.textContent = state.settings.theme === "light" ? "Dark mode" : "Light mode";
+  document.body.classList.toggle("dark", state.settings.theme !== "light");
+  document.documentElement.dataset.theme = state.settings.theme;
+  document.documentElement.style.colorScheme = state.settings.theme === "light" ? "light" : "dark";
+  el.themeToggle.textContent = state.settings.theme === "light" ? "Switch to dark" : "Switch to light";
 }
 
 function renderSettings() {

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, clipboard, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, shell } = require("electron");
 const fs = require("fs/promises");
 const path = require("path");
 const { SettingsStore } = require("../core/settingsStore");
@@ -12,6 +12,7 @@ const versionManager = new VersionManager(settings);
 const instanceManager = new InstanceManager(settings);
 const javaDetector = new JavaDetector();
 let launcher = null;
+const windows = new Set();
 
 const folderMap = {
   minecraft: "",
@@ -38,11 +39,14 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, "../renderer/index.html"));
+  windows.add(win);
+  win.on("closed", () => windows.delete(win));
 }
 
 app.whenReady().then(async () => {
   await settings.init();
   await instanceManager.init();
+  applyTheme(settings.get("theme"));
   createWindow();
 
   app.on("activate", () => {
@@ -62,6 +66,7 @@ ipcMain.handle("settings:get", async () => settings.getAll());
 
 ipcMain.handle("settings:update", async (_event, patch) => {
   await settings.setMany(patch);
+  if (patch.theme) applyTheme(patch.theme);
   return settings.getAll();
 });
 
@@ -196,4 +201,16 @@ ipcMain.handle("launch:stop", async () => {
 
 function detectVersion(filename) {
   return filename.match(/(?:^|[-_])(\d+\.\d+(?:\.\d+)?)/)?.[1] || "";
+}
+
+function applyTheme(theme) {
+  nativeTheme.themeSource = theme === "light" ? "light" : "dark";
+  const backgroundColor = theme === "light" ? "#f4f6f8" : "#0f1115";
+  for (const win of windows) {
+    try {
+      win.setBackgroundColor(backgroundColor);
+    } catch {
+      // Window may be in teardown.
+    }
+  }
 }

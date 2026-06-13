@@ -1,30 +1,39 @@
 :root {
-  --bg: #0f1115;
-  --sidebar: #15181d;
-  --panel: #1b1f26;
-  --panel-2: #20252d;
-  --input: #11151a;
-  --text: #e8edf3;
-  --muted: #9aa5b1;
-  --line: #303843;
-  --line-strong: #4a5563;
-  --accent: #3d8bff;
-  --accent-2: #1f5fb8;
-  --danger: #e35d5d;
+  --bg: #090b0f;
+  --sidebar: #12161b;
+  --panel: #171b21;
+  --panel-2: #1d232a;
+  --input: #11161b;
+  --text: #edf2f7;
+  --muted: #96a0ab;
+  --line: #2b323c;
+  --line-strong: #475260;
+  --accent: #4f93ff;
+  --accent-2: #2865bd;
+  --danger: #ea6666;
+  --console-bg: #07090c;
+  --console-text: #dbe7f3;
+  --table-head: #1d232a;
+  --surface-border: #2c343f;
 }
 
 body.light {
-  --bg: #f4f6f8;
-  --sidebar: #e8edf2;
+  --bg: #f3f5f7;
+  --sidebar: #e7ebf0;
   --panel: #ffffff;
-  --panel-2: #f0f3f6;
+  --panel-2: #f4f6f8;
   --input: #ffffff;
-  --text: #11151a;
-  --muted: #5e6874;
-  --line: #cfd7df;
-  --line-strong: #9aa6b4;
-  --accent: #1868d8;
-  --accent-2: #0f4d9e;
+  --text: #12161b;
+  --muted: #5d6874;
+  --line: #ccd4dd;
+  --line-strong: #9aa6b3;
+  --accent: #155fd1;
+  --accent-2: #0e488f;
+  --danger: #d65959;
+  --console-bg: #0f141a;
+  --console-text: #dbe7f3;
+  --table-head: #eef2f6;
+  --surface-border: #c7cfd8;
 }
 
 * {
@@ -61,7 +70,7 @@ button {
 
 button:hover {
   border-color: var(--line-strong);
-  background: color-mix(in srgb, var(--panel-2) 84%, var(--accent));
+  background: color-mix(in srgb, var(--panel-2) 88%, var(--accent));
 }
 
 button:disabled {
@@ -134,7 +143,7 @@ th {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background: var(--panel-2);
+  background: var(--table-head);
 }
 
 .app {
@@ -166,7 +175,7 @@ th {
   height: 44px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--surface-border);
   background: var(--panel);
   color: var(--accent);
   font-weight: 900;
@@ -380,6 +389,7 @@ progress {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   border: 1px solid var(--line);
+  background: var(--panel-2);
 }
 
 .runtime-info div {
@@ -407,8 +417,8 @@ progress {
   min-height: 320px;
   overflow: auto;
   border: 1px solid var(--line);
-  background: #07090c;
-  color: #dbe7f3;
+  background: var(--console-bg);
+  color: var(--console-text);
   padding: 12px;
   white-space: pre-wrap;
   font: 13px/1.45 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
