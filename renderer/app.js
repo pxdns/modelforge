@@ -117,7 +117,14 @@ const el = {
   copyLogsButton: $("#copyLogsButton"),
   exportLogsButton: $("#exportLogsButton"),
   javaArchLabel: $("#javaArchLabel"),
-  javaVendorLabel: $("#javaVendorLabel")
+  javaVendorLabel: $("#javaVendorLabel"),
+  playCallout: $("#playCallout"),
+  selectedInstanceName: $("#selectedInstanceName"),
+  selectedInstanceVersion: $("#selectedInstanceVersion"),
+  selectedInstanceLoader: $("#selectedInstanceLoader"),
+  selectedInstanceRam: $("#selectedInstanceRam"),
+  selectedInstanceJava: $("#selectedInstanceJava"),
+  selectedInstanceFolder: $("#selectedInstanceFolder")
 };
 
 async function boot() {
@@ -405,11 +412,25 @@ function renderSelectedInstance() {
   if (!instance) {
     el.selectedTitle.textContent = "Select an instance";
     el.selectedSubtitle.textContent = "Choose an instance to configure and launch.";
+    el.playCallout.textContent = "Create or choose an instance to get started.";
+    el.selectedInstanceName.textContent = "None";
+    el.selectedInstanceVersion.textContent = "-";
+    el.selectedInstanceLoader.textContent = "Vanilla";
+    el.selectedInstanceRam.textContent = `${state.settings.ramMb || 4096} MiB`;
+    el.selectedInstanceJava.textContent = state.settings.javaPath ? "Custom" : "Auto";
+    el.selectedInstanceFolder.textContent = state.settings.gameDir || "-";
     return;
   }
 
   el.selectedTitle.textContent = instance.name;
   el.selectedSubtitle.textContent = instance.minecraftDir;
+  el.playCallout.textContent = `${instance.name} is ready to launch.`;
+  el.selectedInstanceName.textContent = instance.name;
+  el.selectedInstanceVersion.textContent = instance.versionId || "Unknown";
+  el.selectedInstanceLoader.textContent = instance.loader || "Vanilla";
+  el.selectedInstanceRam.textContent = `${instance.ramMb || state.settings.ramMb || 4096} MiB`;
+  el.selectedInstanceJava.textContent = instance.javaPath ? "Custom" : (state.settings.javaPath ? "Custom" : "Auto");
+  el.selectedInstanceFolder.textContent = instance.minecraftDir || state.settings.gameDir || "-";
   el.instanceNameInput.value = instance.name;
   el.versionSelect.value = instance.versionId;
   el.usernameInput.value = instance.offlineUsername || state.settings.offlineUsername || "Player";

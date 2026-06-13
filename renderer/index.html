@@ -53,10 +53,22 @@
         <progress id="downloadProgress" value="0" max="100"></progress>
 
         <section id="playView" class="view active">
-          <div class="grid two">
+          <div class="play-layout">
             <section class="panel launch-panel">
-              <h3>Launch Minecraft</h3>
-              <div class="field-grid">
+              <div class="hero-head">
+                <div>
+                  <span class="eyebrow">Play</span>
+                  <h3>Launch Minecraft</h3>
+                  <p id="playCallout">Pick an instance, confirm the version, and launch.</p>
+                </div>
+                <div class="launch-meta">
+                  <div><span>Instance</span><strong id="selectedInstanceName">None</strong></div>
+                  <div><span>Version</span><strong id="selectedInstanceVersion">-</strong></div>
+                  <div><span>Loader</span><strong id="selectedInstanceLoader">Vanilla</strong></div>
+                </div>
+              </div>
+
+              <div class="launch-grid">
                 <label>
                   <span>Account</span>
                   <div class="inline-field">
@@ -83,32 +95,41 @@
                   </select>
                 </label>
               </div>
+
               <button id="playButton" class="launch-button" disabled>Launch Minecraft</button>
               <button id="stopButton" disabled>Stop</button>
-            </section>
 
-            <section class="panel quick-actions">
-              <h3>Quick Actions</h3>
-              <div class="action-grid">
-                <button data-folder="mods">Open Mods Folder</button>
-                <button data-folder="minecraft">Open Minecraft Folder</button>
-                <button data-folder="resourcepacks">Open Resource Packs</button>
-                <button data-folder="shaderpacks">Open Shader Packs</button>
-                <button id="refreshVersionsButton">Refresh Versions</button>
-                <button data-view-target="settingsView">Open Settings</button>
+              <div class="summary-strip">
+                <div><span>RAM</span><strong id="selectedInstanceRam">4096 MiB</strong></div>
+                <div><span>Java</span><strong id="selectedInstanceJava">Auto</strong></div>
+                <div><span>Folder</span><strong id="selectedInstanceFolder">-</strong></div>
               </div>
             </section>
 
-            <form id="instanceForm" class="panel">
-              <h3>Instance Profile</h3>
-              <label>
-                <span>Instance Name</span>
-                <input id="instanceNameInput" type="text" placeholder="Minecraft 1.21.11">
-              </label>
-              <div class="button-row">
-                <button id="saveInstanceButton" type="submit" class="primary">Save Instance</button>
-              </div>
-            </form>
+            <div class="stack">
+              <section class="panel quick-actions">
+                <h3>Quick Actions</h3>
+                <div class="action-grid">
+                  <button data-folder="mods">Open Mods Folder</button>
+                  <button data-folder="minecraft">Open Minecraft Folder</button>
+                  <button data-folder="resourcepacks">Open Resource Packs</button>
+                  <button data-folder="shaderpacks">Open Shader Packs</button>
+                  <button id="refreshVersionsButton">Refresh Versions</button>
+                  <button data-view-target="settingsView">Open Settings</button>
+                </div>
+              </section>
+
+              <form id="instanceForm" class="panel instance-summary">
+                <h3>Instance</h3>
+                <label>
+                  <span>Instance Name</span>
+                  <input id="instanceNameInput" type="text" placeholder="Minecraft 1.21.11">
+                </label>
+                <div class="button-row">
+                  <button id="saveInstanceButton" type="submit" class="primary">Save Instance</button>
+                </div>
+              </form>
+            </div>
           </div>
         </section>
 

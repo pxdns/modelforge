@@ -22,10 +22,17 @@ class VersionManager {
     }
 
     onProgress?.({ label: "version manifest", phase: "downloading", current: 0, total: 1 });
-    const manifest = await fetchJson(MANIFEST_URL);
-    await writeJson(manifestPath, manifest);
-    onProgress?.({ label: "version manifest", phase: "done", current: 1, total: 1 });
-    return manifest;
+    try {
+      const manifest = await fetchJson(MANIFEST_URL);
+      await writeJson(manifestPath, manifest);
+      onProgress?.({ label: "version manifest", phase: "done", current: 1, total: 1 });
+      return manifest;
+    } catch (error) {
+      if (await pathExists(manifestPath)) {
+        return readJson(manifestPath);
+      }
+      throw error;
+    }
   }
 
   async getVersionJson(versionId, options = {}) {
@@ -38,9 +45,14 @@ class VersionManager {
     const entry = manifest.versions.find((version) => version.id === versionId);
     if (!entry) throw new Error(`Version not found in manifest: ${versionId}`);
 
-    const versionJson = await fetchJson(entry.url);
-    await writeJson(versionJsonPath, versionJson);
-    return versionJson;
+    try {
+      const versionJson = await fetchJson(entry.url);
+      await writeJson(versionJsonPath, versionJson);
+      return versionJson;
+    } catch (error) {
+      if (await pathExists(versionJsonPath)) return readJson(versionJsonPath);
+      throw error;
+    }
   }
 
   async ensureVersion(versionId, { onProgress } = {}) {
