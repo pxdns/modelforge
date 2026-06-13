@@ -1,0 +1,20 @@
+{
+  "name": "vanilla-minecraft-launcher-mvp",
+  "version": "0.1.0",
+  "description": "A lightweight Electron Minecraft launcher MVP for vanilla official game files.",
+  "main": "main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "node scripts/smoke.js"
+  },
+  "keywords": [
+    "electron",
+    "minecraft",
+    "launcher"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.7.7"
+  }
+}

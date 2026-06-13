@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanilla Launcher MVP</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="mark">VL</div>
+          <div>
+            <h1>Vanilla Launcher</h1>
+            <p>Minecraft MVP</p>
+          </div>
+        </div>
+
+        <button id="createInstanceButton" class="primary-action">+ New Instance</button>
+        <div id="instanceList" class="instance-list"></div>
+      </aside>
+
+      <section class="content">
+        <header class="topbar">
+          <div>
+            <h2 id="selectedTitle">Select an instance</h2>
+            <p id="selectedSubtitle">Create or choose an instance to configure and play.</p>
+          </div>
+          <button id="refreshVersionsButton" class="ghost-button">Refresh Versions</button>
+        </header>
+
+        <section class="toolbar">
+          <label>
+            <span>Game Directory</span>
+            <div class="path-row">
+              <input id="gameDirInput" type="text" spellcheck="false">
+              <button id="selectGameDirButton">Browse</button>
+            </div>
+          </label>
+          <label>
+            <span>Offline Display Name</span>
+            <input id="usernameInput" type="text" maxlength="16" placeholder="Player">
+          </label>
+        </section>
+
+        <section class="panel-grid">
+          <form id="instanceForm" class="panel">
+            <div class="panel-head">
+              <h3>Instance</h3>
+              <p>Vanilla version, memory, and Java runtime.</p>
+            </div>
+
+            <label>
+              <span>Name</span>
+              <input id="instanceNameInput" type="text" placeholder="Survival 1.21">
+            </label>
+
+            <label>
+              <span>Version</span>
+              <select id="versionSelect"></select>
+            </label>
+
+            <label>
+              <span>RAM: <strong id="ramLabel">2048 MB</strong></span>
+              <input id="ramSlider" type="range" min="1024" max="8192" step="256" value="2048">
+            </label>
+
+            <label>
+              <span>Java Path</span>
+              <div class="path-row">
+                <input id="javaPathInput" type="text" spellcheck="false" placeholder="Auto-detect">
+                <button id="selectJavaButton" type="button">Browse</button>
+              </div>
+            </label>
+
+            <div class="button-row">
+              <button id="detectJavaButton" type="button" class="ghost-button">Detect Java</button>
+              <button id="saveInstanceButton" type="submit">Save</button>
+            </div>
+          </form>
+
+          <section class="panel launch-panel">
+            <div class="panel-head">
+              <h3>Launch</h3>
+              <p>Downloads official vanilla files when needed.</p>
+            </div>
+            <button id="playButton" class="play-button" disabled>Play</button>
+            <button id="stopButton" class="ghost-button" disabled>Stop</button>
+            <div class="progress-wrap">
+              <div class="progress-meta">
+                <span id="progressLabel">Ready</span>
+                <span id="progressPercent">0%</span>
+              </div>
+              <progress id="downloadProgress" value="0" max="100"></progress>
+            </div>
+          </section>
+        </section>
+
+        <section class="console-panel">
+          <div class="console-head">
+            <h3>Console</h3>
+            <button id="clearConsoleButton" class="ghost-button">Clear</button>
+          </div>
+          <pre id="logConsole"></pre>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
