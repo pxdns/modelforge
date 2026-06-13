@@ -36,6 +36,4 @@ jobs:
         with:
           name: modelforge-launcher-macos
           path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.blockmap
+            dist/*.tar.gz

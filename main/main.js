@@ -69,7 +69,7 @@ ipcMain.handle("dialog:select-directory", async () => {
 
 ipcMain.handle("dialog:select-java", async () => {
   const result = await dialog.showOpenDialog({
-    properties: ["openFile"]
+    properties: ["openFile", "openDirectory"]
   });
   return result.canceled ? null : result.filePaths[0];
 });
@@ -98,6 +98,8 @@ ipcMain.handle("instances:update", async (_event, instanceId, patch) => {
 });
 
 ipcMain.handle("java:detect", async () => javaDetector.detect());
+
+ipcMain.handle("java:check", async (_event, javaPath) => javaDetector.check(javaPath));
 
 ipcMain.handle("launch:start", async (event, instanceId) => {
   const instance = await instanceManager.getInstance(instanceId);

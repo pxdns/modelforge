@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("launcherApi", {
   createInstance: (payload) => ipcRenderer.invoke("instances:create", payload),
   updateInstance: (instanceId, patch) => ipcRenderer.invoke("instances:update", instanceId, patch),
   detectJava: () => ipcRenderer.invoke("java:detect"),
+  checkJava: (javaPath) => ipcRenderer.invoke("java:check", javaPath),
   launch: (instanceId) => ipcRenderer.invoke("launch:start", instanceId),
   stop: () => ipcRenderer.invoke("launch:stop"),
   onLog: (callback) => ipcRenderer.on("launch-log", (_event, line) => callback(line)),

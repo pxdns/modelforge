@@ -60,10 +60,16 @@ class MinecraftLauncher extends EventEmitter {
   }
 
   async resolveJavaPath(instanceJavaPath) {
-    if (instanceJavaPath) return instanceJavaPath;
-    const detected = await new JavaDetector().detect();
+    const detector = new JavaDetector();
+    if (instanceJavaPath) {
+      const checked = await detector.check(instanceJavaPath);
+      if (checked.ok) return checked.javaPath;
+      throw new Error(checked.message);
+    }
+
+    const detected = await detector.detect();
     if (detected.ok) return detected.javaPath;
-    return process.platform === "win32" ? "java.exe" : "java";
+    throw new Error(detected.message);
   }
 
   async buildArguments(instance, versionJson, nativesDir) {

@@ -6,10 +6,64 @@ class JavaDetector {
   async detect() {
     const candidates = await this.getCandidates();
     for (const candidate of candidates) {
-      const result = await this.getVersion(candidate);
+      const result = await this.check(candidate);
       if (result.ok) return { javaPath: candidate, ...result };
     }
     return { javaPath: "", ok: false, version: "", message: "Java was not found on PATH or common install locations." };
+  }
+
+  async check(inputPath) {
+    if (!inputPath) {
+      return { ok: false, javaPath: "", version: "", message: "No Java path was provided." };
+    }
+
+    const javaPath = await this.resolveJavaExecutable(inputPath);
+    if (!javaPath) {
+      return {
+        ok: false,
+        javaPath: "",
+        version: "",
+        message: `No Java executable was found in ${inputPath}.`
+      };
+    }
+
+    const result = await this.getVersion(javaPath);
+    return { ...result, javaPath };
+  }
+
+  async resolveJavaExecutable(inputPath) {
+    const executable = process.platform === "win32" ? "java.exe" : "java";
+    const value = String(inputPath).trim();
+    if (!value) return "";
+
+    if (!value.includes("/") && !value.includes("\\")) return value;
+
+    let stat = null;
+    try {
+      stat = await fs.stat(value);
+    } catch {
+      return "";
+    }
+
+    if (stat.isFile()) return value;
+    if (!stat.isDirectory()) return "";
+
+    const candidates = [
+      path.join(value, "bin", executable),
+      path.join(value, "Contents", "Home", "bin", executable),
+      path.join(value, "Home", "bin", executable)
+    ];
+
+    for (const candidate of candidates) {
+      try {
+        const candidateStat = await fs.stat(candidate);
+        if (candidateStat.isFile()) return candidate;
+      } catch {
+        // Try the next known Java layout.
+      }
+    }
+
+    return "";
   }
 
   async getCandidates() {

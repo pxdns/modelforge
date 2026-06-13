@@ -263,6 +263,10 @@ function openJavaDialog() {
 
 async function closeJavaDialog() {
   const selected = document.querySelector('input[name="javaChoice"]:checked')?.value || "custom";
+  if (selected === "custom" && el.dialogJavaPathInput.value.trim()) {
+    const ok = await checkAndApplyJavaPath(el.dialogJavaPathInput.value.trim(), false);
+    if (!ok) return;
+  }
   el.javaModeSelect.value = selected;
   await saveSettings();
   el.javaDialog.close();
@@ -271,8 +275,7 @@ async function closeJavaDialog() {
 async function selectJavaForDialog() {
   const javaPath = await window.launcherApi.selectJava();
   if (javaPath) {
-    el.dialogJavaPathInput.value = javaPath;
-    el.javaPathInput.value = javaPath;
+    await checkAndApplyJavaPath(javaPath, false);
   }
 }
 
@@ -409,8 +412,7 @@ async function saveSelectedInstance(event) {
 async function selectJava() {
   const javaPath = await window.launcherApi.selectJava();
   if (javaPath) {
-    el.javaPathInput.value = javaPath;
-    el.dialogJavaPathInput.value = javaPath;
+    await checkAndApplyJavaPath(javaPath, false);
   }
 }
 
@@ -419,7 +421,7 @@ async function detectJava(quiet) {
   state.detectedJava = detected;
   if (detected.ok) {
     el.detectedJavaLabel.textContent = `Detected Java ${detected.version}`;
-    if (!el.javaPathInput.value && !el.dialogJavaPathInput.value) {
+    if (!quiet || (!el.javaPathInput.value && !el.dialogJavaPathInput.value)) {
       el.javaPathInput.value = detected.javaPath;
       el.dialogJavaPathInput.value = detected.javaPath;
     }
@@ -428,6 +430,21 @@ async function detectJava(quiet) {
     el.detectedJavaLabel.textContent = "Java was not detected";
     if (!quiet) appendLog(detected.message);
   }
+}
+
+async function checkAndApplyJavaPath(javaPath, quiet) {
+  const checked = await window.launcherApi.checkJava(javaPath);
+  if (checked.ok) {
+    el.javaPathInput.value = checked.javaPath;
+    el.dialogJavaPathInput.value = checked.javaPath;
+    el.detectedJavaLabel.textContent = `Detected Java ${checked.version}`;
+    if (!quiet) appendLog(`Java OK ${checked.version}: ${checked.javaPath}`);
+    return true;
+  }
+
+  el.detectedJavaLabel.textContent = "Java path is invalid";
+  if (!quiet) appendLog(`Java check failed: ${checked.message}`);
+  return false;
 }
 
 async function playSelectedInstance() {
