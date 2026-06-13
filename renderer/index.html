@@ -7,227 +7,286 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <main class="shell">
+    <main class="app">
       <aside class="sidebar">
-        <div class="brand-block">
+        <header class="brand">
           <div class="brand-mark">MF</div>
           <div>
             <h1>ModelForge</h1>
-            <p>Vanilla instance launcher</p>
+            <p>Minecraft runtime manager</p>
           </div>
-        </div>
+        </header>
 
-        <div class="quick-card">
-          <label>
-            <span>Profile</span>
-            <input id="usernameInput" type="text" maxlength="16" placeholder="Player">
-          </label>
-          <label>
-            <span>Version</span>
-            <select id="versionSelect"></select>
-          </label>
-          <button id="playButton" class="play-button" disabled>Play</button>
-          <button id="stopButton" disabled>Stop</button>
-        </div>
-
-        <div class="side-actions">
-          <button id="createInstanceButton" class="primary-action">New Instance</button>
-          <button id="refreshVersionsButton">Refresh Versions</button>
-        </div>
-
-        <div id="instanceList" class="instance-list"></div>
-
-        <nav class="side-nav">
-          <button class="tab active" data-view="minecraftView">Settings</button>
-          <button class="tab" data-view="launcherView">Instances</button>
-          <button class="tab" data-view="aboutView">About</button>
+        <nav class="nav">
+          <button class="tab active" data-view="playView">Play</button>
+          <button class="tab" data-view="versionsView">Versions</button>
+          <button class="tab" data-view="modsView">Mods</button>
+          <button class="tab" data-view="javaView">Java</button>
+          <button class="tab" data-view="foldersView">Folders</button>
+          <button class="tab" data-view="settingsView">Settings</button>
+          <button class="tab" data-view="logsView">Logs</button>
         </nav>
+
+        <section class="sidebar-panel">
+          <label>
+            <span>Instance</span>
+            <select id="instanceSelect"></select>
+          </label>
+          <button id="createInstanceButton">New Instance</button>
+        </section>
 
         <button id="themeToggle" class="theme-toggle">Light mode</button>
       </aside>
 
       <section class="workspace">
-        <header class="workspace-header">
+        <header class="workspace-head">
           <div>
-            <span class="eyebrow">Launcher Control</span>
+            <span class="eyebrow">ModelForge</span>
             <h2 id="selectedTitle">Select an instance</h2>
             <p id="selectedSubtitle">Choose an instance to configure and launch.</p>
           </div>
-          <div class="status-chip">
+          <div class="status">
             <span id="progressLabel">Ready</span>
             <strong id="progressPercent">0%</strong>
           </div>
         </header>
-
         <progress id="downloadProgress" value="0" max="100"></progress>
 
-        <section id="minecraftView" class="view active">
-          <div class="settings-layout">
-            <section class="panel hero-panel">
-              <div>
-                <span class="eyebrow">Game Directory</span>
-                <h3>Minecraft files</h3>
+        <section id="playView" class="view active">
+          <div class="grid two">
+            <section class="panel launch-panel">
+              <h3>Launch Minecraft</h3>
+              <div class="field-grid">
+                <label>
+                  <span>Account</span>
+                  <div class="inline-field">
+                    <input id="usernameInput" type="text" maxlength="16" placeholder="Player">
+                    <button type="button">Manage</button>
+                  </div>
+                </label>
+                <label>
+                  <span>Version</span>
+                  <select id="versionSelect"></select>
+                </label>
+                <label>
+                  <span>Profile</span>
+                  <input id="profileInput" type="text" value="Default">
+                </label>
+                <label>
+                  <span>Loader</span>
+                  <select id="loaderSelect">
+                    <option>Vanilla</option>
+                    <option>Fabric</option>
+                    <option>Forge</option>
+                    <option>NeoForge</option>
+                    <option>Quilt</option>
+                  </select>
+                </label>
               </div>
-              <div class="inline-field">
-                <input id="gameDirInput" type="text" spellcheck="false">
-                <button id="selectGameDirButton">Browse...</button>
-              </div>
-              <select id="separateFoldersSelect">
-                <option value="none">Don't use separate folders</option>
-                <option value="versions">Use separate folders by version</option>
-                <option value="instances">Use separate folders by instance</option>
-              </select>
+              <button id="playButton" class="launch-button" disabled>Launch Minecraft</button>
+              <button id="stopButton" disabled>Stop</button>
             </section>
 
-            <section class="panel compact-panel">
-              <div>
-                <span class="eyebrow">Window</span>
-                <h3>Launch size</h3>
+            <section class="panel quick-actions">
+              <h3>Quick Actions</h3>
+              <div class="action-grid">
+                <button data-folder="mods">Open Mods Folder</button>
+                <button data-folder="minecraft">Open Minecraft Folder</button>
+                <button data-folder="resourcepacks">Open Resource Packs</button>
+                <button data-folder="shaderpacks">Open Shader Packs</button>
+                <button id="refreshVersionsButton">Refresh Versions</button>
+                <button data-view-target="settingsView">Open Settings</button>
               </div>
-              <div class="size-row">
-                <input id="windowWidthInput" type="number" min="320" max="7680">
-                <span>x</span>
-                <input id="windowHeightInput" type="number" min="240" max="4320">
-              </div>
-              <label class="check-line">
-                <input id="fullscreenCheckbox" type="checkbox">
-                <span>Force fullscreen</span>
+            </section>
+
+            <form id="instanceForm" class="panel">
+              <h3>Instance Profile</h3>
+              <label>
+                <span>Instance Name</span>
+                <input id="instanceNameInput" type="text" placeholder="Minecraft 1.21.11">
               </label>
-            </section>
-
-            <section class="panel compact-panel">
-              <div>
-                <span class="eyebrow">Java</span>
-                <h3>Runtime</h3>
+              <div class="button-row">
+                <button id="saveInstanceButton" type="submit" class="primary">Save Instance</button>
               </div>
-              <div class="inline-field">
-                <select id="javaModeSelect">
-                  <option value="recommended">Recommended</option>
-                  <option value="current">Current only</option>
-                  <option value="custom">Custom</option>
-                </select>
-                <button id="openJavaSettingsButton">Configure...</button>
-              </div>
-              <small id="detectedJavaLabel">Java status unknown</small>
-            </section>
-
-            <section class="panel memory-card">
-              <div>
-                <span class="eyebrow">Memory</span>
-                <h3>RAM allocation</h3>
-              </div>
-              <input id="ramSlider" type="range" min="1024" max="16384" step="256">
-              <div class="ram-scale">
-                <span>1 GiB</span>
-                <span>4 GiB</span>
-                <span>8 GiB</span>
-                <span>12 GiB</span>
-                <span>16 GiB</span>
-              </div>
-              <div class="ram-entry">
-                <input id="ramNumberInput" type="number" min="1024" max="16384" step="256">
-                <span>MiB</span>
-                <label class="check-line"><input id="autoMemoryCheckbox" type="checkbox"><span>Auto</span></label>
-              </div>
-            </section>
-
-            <section class="panel version-card">
-              <div>
-                <span class="eyebrow">Version Index</span>
-                <h3>Filters</h3>
-              </div>
-              <div class="version-options">
-                <label class="check-line"><input id="filterRemote" type="checkbox"><span>Remote from server</span></label>
-                <label class="check-line"><input id="filterSnapshots" type="checkbox"><span>Snapshots</span></label>
-                <label class="check-line"><input id="filterModified" type="checkbox"><span>Modified (Forge, Fabric)</span></label>
-                <label class="check-line"><input id="filterBeta" type="checkbox"><span>Beta (2010-2011)</span></label>
-                <label class="check-line"><input id="filterAlpha" type="checkbox"><span>Alpha (2010)</span></label>
-                <label class="check-line"><input id="filterLaunchers" type="checkbox"><span>Launchers</span></label>
-                <label class="check-line"><input id="filterExperimental" type="checkbox"><span>Experimental</span></label>
-                <label class="check-line"><input id="filterOldReleases" type="checkbox"><span>Show old releases (&lt; 1.7.10)</span></label>
-                <label class="check-line"><input id="filterInstalledOnly" type="checkbox"><span>Only installed</span></label>
-              </div>
-            </section>
-
-            <section class="panel save-card">
-              <label class="check-line">
-                <input id="suggestServersCheckbox" type="checkbox">
-                <span>Suggest servers</span>
-              </label>
-              <div class="save-actions">
-                <button id="resetSettingsButton">Reset to defaults</button>
-                <button id="saveSettingsButton" class="primary-action">Save Settings</button>
-              </div>
-              <button id="homeButton" class="hidden-home" aria-label="Home">Home</button>
-            </section>
+            </form>
           </div>
         </section>
 
-        <section id="launcherView" class="view">
-          <form id="instanceForm" class="panel instance-form">
-            <label>
-              <span>Name</span>
-              <input id="instanceNameInput" type="text" placeholder="Minecraft 1.21.11">
-            </label>
-            <label>
-              <span>Java path</span>
-              <div class="inline-field">
-                <input id="javaPathInput" type="text" spellcheck="false" placeholder="Auto-detect">
-                <button id="selectJavaButton" type="button">Browse...</button>
-              </div>
-            </label>
-            <div class="form-actions">
-              <button id="detectJavaButton" type="button">Detect Java</button>
-              <button id="saveInstanceButton" type="submit" class="primary-action">Save Instance</button>
+        <section id="versionsView" class="view">
+          <section class="panel">
+            <div class="section-head">
+              <h3>Version Management</h3>
+              <button id="refreshVersionsButtonSecondary">Refresh</button>
             </div>
-          </form>
-
-          <section class="console-panel">
-            <div class="console-head">
-              <h3>Console</h3>
-              <button id="clearConsoleButton">Clear</button>
+            <div class="filter-grid">
+              <label class="check-line"><input id="filterRemote" type="checkbox"><span>Release</span></label>
+              <label class="check-line"><input id="filterSnapshots" type="checkbox"><span>Snapshot</span></label>
+              <label class="check-line"><input id="filterModified" type="checkbox"><span>Modified</span></label>
+              <label class="check-line"><input id="filterFabric" type="checkbox"><span>Fabric</span></label>
+              <label class="check-line"><input id="filterForge" type="checkbox"><span>Forge</span></label>
+              <label class="check-line"><input id="filterNeoForge" type="checkbox"><span>NeoForge</span></label>
+              <label class="check-line"><input id="filterQuilt" type="checkbox"><span>Quilt</span></label>
+              <label class="check-line"><input id="filterAlpha" type="checkbox"><span>Alpha</span></label>
+              <label class="check-line"><input id="filterBeta" type="checkbox"><span>Beta</span></label>
+              <label class="check-line"><input id="filterExperimental" type="checkbox"><span>Experimental</span></label>
+              <label class="check-line"><input id="filterOldReleases" type="checkbox"><span>Old Releases</span></label>
+              <label class="check-line"><input id="filterInstalledOnly" type="checkbox"><span>Only Installed</span></label>
+              <label class="check-line hidden"><input id="filterLaunchers" type="checkbox"><span>Launchers</span></label>
             </div>
-            <pre id="logConsole"></pre>
+            <table>
+              <thead><tr><th>Version</th><th>Loader</th><th>Type</th><th>Installed</th><th>State</th></tr></thead>
+              <tbody id="versionTableBody"></tbody>
+            </table>
           </section>
         </section>
 
-        <section id="aboutView" class="view about-view">
+        <section id="modsView" class="view">
           <section class="panel">
-            <span class="eyebrow">About</span>
-            <h3>ModelForge</h3>
-            <p>A local launcher for vanilla Minecraft instances, official game files, and user-controlled Java runtimes.</p>
-            <p>Version metadata is downloaded from Mojang launch services. Account login is intentionally not implemented here.</p>
+            <div class="section-head">
+              <h3>Mods</h3>
+              <div class="button-row">
+                <button id="addModButton">Add Mod</button>
+                <button id="refreshModsButton">Refresh</button>
+                <button data-folder="mods">Open Mods Folder</button>
+              </div>
+            </div>
+            <table>
+              <thead><tr><th>Filename</th><th>Mod Name</th><th>Version</th><th>Loader</th><th>Status</th><th></th></tr></thead>
+              <tbody id="modsTableBody"></tbody>
+            </table>
+          </section>
+        </section>
+
+        <section id="javaView" class="view">
+          <section class="panel">
+            <div class="section-head">
+              <h3>Java Runtime Manager</h3>
+              <button id="openJavaSettingsButton">Configure Runtime</button>
+            </div>
+            <div class="grid two">
+              <label>
+                <span>Runtime Selection</span>
+                <select id="javaModeSelect">
+                  <option value="recommended">Recommended Java</option>
+                  <option value="current">Launcher Java</option>
+                  <option value="custom">Custom Java</option>
+                </select>
+              </label>
+              <label>
+                <span>Path</span>
+                <div class="inline-field">
+                  <input id="javaPathInput" type="text" spellcheck="false" placeholder="Auto-detect">
+                  <button id="selectJavaButton" type="button">Browse...</button>
+                </div>
+              </label>
+            </div>
+            <div class="runtime-info">
+              <div><span>Status</span><strong id="detectedJavaLabel">Unknown</strong></div>
+              <div><span>Architecture</span><strong id="javaArchLabel">System</strong></div>
+              <div><span>Vendor</span><strong id="javaVendorLabel">Detected at runtime</strong></div>
+            </div>
+            <div class="button-row">
+              <button id="detectJavaButton" type="button">Detect Java</button>
+            </div>
+          </section>
+        </section>
+
+        <section id="foldersView" class="view">
+          <section class="panel">
+            <h3>Folders</h3>
+            <div class="folder-grid">
+              <button data-folder="minecraft">Open Minecraft Folder</button>
+              <button data-folder="mods">Open Mods Folder</button>
+              <button data-folder="resourcepacks">Open Resource Packs Folder</button>
+              <button data-folder="shaderpacks">Open Shader Packs Folder</button>
+              <button data-folder="saves">Open Saves Folder</button>
+              <button data-folder="logs">Open Logs Folder</button>
+              <button data-folder="screenshots">Open Screenshots Folder</button>
+            </div>
+          </section>
+        </section>
+
+        <section id="settingsView" class="view">
+          <section class="panel">
+            <h3>Minecraft Settings</h3>
+            <div class="settings-grid">
+              <label class="wide">
+                <span>Game Folder</span>
+                <div class="inline-field">
+                  <input id="gameDirInput" type="text" spellcheck="false">
+                  <button id="selectGameDirButton">Browse...</button>
+                </div>
+              </label>
+              <label>
+                <span>Folder Isolation</span>
+                <select id="separateFoldersSelect">
+                  <option value="none">Don't use separate folders</option>
+                  <option value="versions">Use separate folders by version</option>
+                  <option value="instances">Use separate folders by instance</option>
+                </select>
+              </label>
+              <label>
+                <span>Window Width</span>
+                <input id="windowWidthInput" type="number" min="320" max="7680">
+              </label>
+              <label>
+                <span>Window Height</span>
+                <input id="windowHeightInput" type="number" min="240" max="4320">
+              </label>
+              <label class="check-line"><input id="fullscreenCheckbox" type="checkbox"><span>Force fullscreen</span></label>
+              <label class="check-line"><input id="delayedStartCheckbox" type="checkbox"><span>Delayed start</span></label>
+              <label class="check-line"><input id="forceUpdateCheckbox" type="checkbox"><span>Force update</span></label>
+              <label class="check-line"><input id="suggestServersCheckbox" type="checkbox"><span>Suggest servers</span></label>
+              <label class="wide">
+                <span>RAM Allocation</span>
+                <input id="ramSlider" type="range" min="1024" max="16384" step="256">
+              </label>
+              <label>
+                <span>RAM MiB</span>
+                <input id="ramNumberInput" type="number" min="1024" max="16384" step="256">
+              </label>
+              <label class="check-line"><input id="autoMemoryCheckbox" type="checkbox"><span>Auto RAM</span></label>
+            </div>
+            <div class="button-row">
+              <button id="resetSettingsButton">Reset to Defaults</button>
+              <button id="saveSettingsButton" class="primary">Save Settings</button>
+              <button id="homeButton" class="hidden">Home</button>
+            </div>
+          </section>
+        </section>
+
+        <section id="logsView" class="view">
+          <section class="panel logs-panel">
+            <div class="section-head">
+              <h3>Logs</h3>
+              <div class="button-row">
+                <input id="logSearchInput" type="search" placeholder="Search logs">
+                <button id="copyLogsButton">Copy</button>
+                <button id="exportLogsButton">Export</button>
+                <button id="clearConsoleButton">Clear</button>
+              </div>
+            </div>
+            <pre id="logConsole"></pre>
           </section>
         </section>
       </section>
     </main>
 
     <dialog id="javaDialog" class="java-dialog">
-      <div class="modal-head">
+      <header class="modal-head">
         <div>
           <span class="eyebrow">Runtime</span>
-          <h2>Java settings</h2>
+          <h2>Java Configuration</h2>
         </div>
-        <button id="doneJavaButton" class="primary-action">Done</button>
-      </div>
-
+        <button id="doneJavaButton" class="primary">Done</button>
+      </header>
       <div class="modal-body">
-        <section class="java-choice">
-          <label class="radio-line">
-            <input type="radio" name="javaChoice" value="recommended">
-            <span><strong>Recommended</strong><small>Let the launcher choose a compatible runtime.</small></span>
-          </label>
-          <label class="radio-line">
-            <input type="radio" name="javaChoice" value="current">
-            <span><strong>Current only</strong><small>Use the same Java runtime this launcher is using.</small></span>
-          </label>
-          <label class="radio-line">
-            <input type="radio" name="javaChoice" value="custom">
-            <span><strong>Custom</strong><small>Use a selected Java executable or JRE/JDK folder.</small></span>
-          </label>
+        <section class="panel flat">
+          <label class="radio-line"><input type="radio" name="javaChoice" value="recommended"><span><strong>Recommended</strong><small>Let the launcher choose a compatible runtime.</small></span></label>
+          <label class="radio-line"><input type="radio" name="javaChoice" value="current"><span><strong>Launcher Java</strong><small>Use the Java runtime running this application.</small></span></label>
+          <label class="radio-line"><input type="radio" name="javaChoice" value="custom"><span><strong>Custom</strong><small>Use a selected executable or JRE/JDK folder.</small></span></label>
         </section>
-
-        <section class="java-settings">
+        <section class="panel flat java-form">
           <label>
             <span>Path</span>
             <div class="inline-field">
@@ -235,29 +294,11 @@
               <button id="dialogBrowseJavaButton" type="button">Browse...</button>
             </div>
           </label>
-          <label>
-            <span>Java arguments</span>
-            <input id="javaArgsInput" type="text" placeholder="e.g. -Xms512M -Dexample=true">
-          </label>
-          <label class="check-line">
-            <input id="updateSslCheckbox" type="checkbox">
-            <span>Update outdated SSL certificate storage</span>
-          </label>
-          <label>
-            <span>Improved JVM arguments</span>
-            <select id="improvedJvmSelect">
-              <option value="default">Default (recommended)</option>
-              <option value="off">Off</option>
-            </select>
-          </label>
-          <label>
-            <span>Minecraft arguments</span>
-            <input id="minecraftArgsInput" type="text" placeholder="e.g. --server example.org">
-          </label>
-          <label>
-            <span>Wrapper command</span>
-            <input id="wrapperCommandInput" type="text" placeholder="e.g. mangohud --dlsym %command%">
-          </label>
+          <label><span>Java arguments</span><input id="javaArgsInput" type="text" placeholder="-Xms512M -Dexample=true"></label>
+          <label class="check-line"><input id="updateSslCheckbox" type="checkbox"><span>Update outdated SSL certificate storage</span></label>
+          <label><span>JVM preset</span><select id="improvedJvmSelect"><option value="default">Default (recommended)</option><option value="off">Off</option></select></label>
+          <label><span>Minecraft arguments</span><input id="minecraftArgsInput" type="text" placeholder="--server example.org"></label>
+          <label><span>Wrapper command</span><input id="wrapperCommandInput" type="text" placeholder="mangohud --dlsym %command%"></label>
         </section>
       </div>
     </dialog>

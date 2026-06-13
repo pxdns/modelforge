@@ -12,9 +12,16 @@ const DEFAULTS = {
   windowWidth: 925,
   windowHeight: 530,
   fullscreen: false,
+  delayedStart: false,
+  forceUpdate: false,
   versionFilters: {
+    release: true,
     remote: true,
     modified: true,
+    fabric: true,
+    forge: true,
+    neoForge: true,
+    quilt: true,
     alpha: false,
     experimental: true,
     installedOnly: false,
@@ -48,8 +55,14 @@ const el = {
   windowWidthInput: $("#windowWidthInput"),
   windowHeightInput: $("#windowHeightInput"),
   fullscreenCheckbox: $("#fullscreenCheckbox"),
+  delayedStartCheckbox: $("#delayedStartCheckbox"),
+  forceUpdateCheckbox: $("#forceUpdateCheckbox"),
   filterRemote: $("#filterRemote"),
   filterModified: $("#filterModified"),
+  filterFabric: $("#filterFabric"),
+  filterForge: $("#filterForge"),
+  filterNeoForge: $("#filterNeoForge"),
+  filterQuilt: $("#filterQuilt"),
   filterAlpha: $("#filterAlpha"),
   filterExperimental: $("#filterExperimental"),
   filterInstalledOnly: $("#filterInstalledOnly"),
@@ -67,7 +80,7 @@ const el = {
   resetSettingsButton: $("#resetSettingsButton"),
   homeButton: $("#homeButton"),
   createInstanceButton: $("#createInstanceButton"),
-  instanceList: $("#instanceList"),
+  instanceSelect: $("#instanceSelect"),
   selectedTitle: $("#selectedTitle"),
   selectedSubtitle: $("#selectedSubtitle"),
   refreshVersionsButton: $("#refreshVersionsButton"),
@@ -94,7 +107,17 @@ const el = {
   improvedJvmSelect: $("#improvedJvmSelect"),
   minecraftArgsInput: $("#minecraftArgsInput"),
   wrapperCommandInput: $("#wrapperCommandInput"),
-  doneJavaButton: $("#doneJavaButton")
+  doneJavaButton: $("#doneJavaButton"),
+  versionTableBody: $("#versionTableBody"),
+  refreshVersionsButtonSecondary: $("#refreshVersionsButtonSecondary"),
+  addModButton: $("#addModButton"),
+  refreshModsButton: $("#refreshModsButton"),
+  modsTableBody: $("#modsTableBody"),
+  logSearchInput: $("#logSearchInput"),
+  copyLogsButton: $("#copyLogsButton"),
+  exportLogsButton: $("#exportLogsButton"),
+  javaArchLabel: $("#javaArchLabel"),
+  javaVendorLabel: $("#javaVendorLabel")
 };
 
 async function boot() {
@@ -104,6 +127,7 @@ async function boot() {
   renderSettings();
   await loadVersions(false);
   await loadInstances();
+  await loadMods();
   await detectJava(true);
   appendLog("ModelForge ready.");
 }
@@ -122,6 +146,19 @@ function wireEvents() {
   el.doneJavaButton.addEventListener("click", closeJavaDialog);
   el.createInstanceButton.addEventListener("click", createInstance);
   el.refreshVersionsButton.addEventListener("click", async () => loadVersions(true));
+  el.refreshVersionsButtonSecondary.addEventListener("click", async () => loadVersions(true));
+  el.instanceSelect.addEventListener("change", selectInstanceFromDropdown);
+  document.querySelectorAll("[data-folder]").forEach((button) => {
+    button.addEventListener("click", () => openFolder(button.dataset.folder));
+  });
+  document.querySelectorAll("[data-view-target]").forEach((button) => {
+    button.addEventListener("click", () => showView(button.dataset.viewTarget));
+  });
+  el.addModButton.addEventListener("click", addMods);
+  el.refreshModsButton.addEventListener("click", loadMods);
+  el.copyLogsButton.addEventListener("click", copyLogs);
+  el.exportLogsButton.addEventListener("click", exportLogs);
+  el.logSearchInput.addEventListener("input", renderLogSearch);
   el.instanceForm.addEventListener("submit", saveSelectedInstance);
   el.selectJavaButton.addEventListener("click", selectJava);
   el.detectJavaButton.addEventListener("click", () => detectJava(false));
@@ -164,7 +201,7 @@ async function toggleTheme() {
 }
 
 function applyTheme() {
-  document.body.classList.toggle("dark", state.settings.theme !== "light");
+  document.body.classList.toggle("light", state.settings.theme === "light");
   el.themeToggle.textContent = state.settings.theme === "light" ? "Dark mode" : "Light mode";
 }
 
@@ -175,8 +212,14 @@ function renderSettings() {
   el.windowWidthInput.value = settings.windowWidth;
   el.windowHeightInput.value = settings.windowHeight;
   el.fullscreenCheckbox.checked = settings.fullscreen;
-  el.filterRemote.checked = settings.versionFilters.remote;
+  el.delayedStartCheckbox.checked = settings.delayedStart;
+  el.forceUpdateCheckbox.checked = settings.forceUpdate;
+  el.filterRemote.checked = settings.versionFilters.release ?? settings.versionFilters.remote;
   el.filterModified.checked = settings.versionFilters.modified;
+  el.filterFabric.checked = settings.versionFilters.fabric;
+  el.filterForge.checked = settings.versionFilters.forge;
+  el.filterNeoForge.checked = settings.versionFilters.neoForge;
+  el.filterQuilt.checked = settings.versionFilters.quilt;
   el.filterAlpha.checked = settings.versionFilters.alpha;
   el.filterExperimental.checked = settings.versionFilters.experimental;
   el.filterInstalledOnly.checked = settings.versionFilters.installedOnly;
@@ -205,9 +248,16 @@ function collectSettings() {
     windowWidth: Number(el.windowWidthInput.value || 925),
     windowHeight: Number(el.windowHeightInput.value || 530),
     fullscreen: el.fullscreenCheckbox.checked,
+    delayedStart: el.delayedStartCheckbox.checked,
+    forceUpdate: el.forceUpdateCheckbox.checked,
     versionFilters: {
+      release: el.filterRemote.checked,
       remote: el.filterRemote.checked,
       modified: el.filterModified.checked,
+      fabric: el.filterFabric.checked,
+      forge: el.filterForge.checked,
+      neoForge: el.filterNeoForge.checked,
+      quilt: el.filterQuilt.checked,
       alpha: el.filterAlpha.checked,
       experimental: el.filterExperimental.checked,
       installedOnly: el.filterInstalledOnly.checked,
@@ -285,6 +335,7 @@ async function loadVersions(forceRefresh) {
     const manifest = await window.launcherApi.listVersions(forceRefresh);
     state.versions = filterVersions(manifest.versions || []);
     renderVersions();
+    renderVersionTable();
     appendLog(`Loaded ${state.versions.length} versions.`);
   } catch (error) {
     appendLog(`Version load failed: ${error.message}`);
@@ -294,6 +345,7 @@ async function loadVersions(forceRefresh) {
 function filterVersions(versions) {
   const filters = state.settings.versionFilters;
   return versions.filter((version) => {
+    if (version.type === "release") return filters.release ?? filters.remote;
     if (version.type === "snapshot") return filters.snapshots;
     if (version.type === "old_beta") return filters.beta;
     if (version.type === "old_alpha") return filters.alpha;
@@ -321,27 +373,27 @@ function renderVersions() {
 }
 
 function renderInstances() {
-  el.instanceList.innerHTML = "";
+  el.instanceSelect.innerHTML = "";
   if (state.instances.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "instance-item";
-    empty.textContent = "No instances yet.";
-    el.instanceList.append(empty);
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No instances";
+    el.instanceSelect.append(option);
     return;
   }
 
   for (const instance of state.instances) {
-    const button = document.createElement("button");
-    button.className = "instance-item";
-    button.innerHTML = `<strong></strong><span></span>`;
-    button.querySelector("strong").textContent = instance.name;
-    button.querySelector("span").textContent = instance.versionId || "No version";
-    button.addEventListener("click", () => {
-      state.selectedInstance = instance;
-      renderSelectedInstance();
-    });
-    el.instanceList.append(button);
+    const option = document.createElement("option");
+    option.value = instance.id;
+    option.textContent = `${instance.name} (${instance.versionId || "No version"})`;
+    el.instanceSelect.append(option);
   }
+  if (state.selectedInstance) el.instanceSelect.value = state.selectedInstance.id;
+}
+
+function selectInstanceFromDropdown() {
+  state.selectedInstance = state.instances.find((instance) => instance.id === el.instanceSelect.value) || null;
+  renderSelectedInstance();
 }
 
 function renderSelectedInstance() {
@@ -359,6 +411,66 @@ function renderSelectedInstance() {
   el.versionSelect.value = instance.versionId;
   el.usernameInput.value = instance.offlineUsername || state.settings.offlineUsername || "Player";
   el.javaPathInput.value = instance.javaPath || state.settings.javaPath || "";
+}
+
+function renderVersionTable() {
+  el.versionTableBody.innerHTML = "";
+  for (const version of state.versions.slice(0, 150)) {
+    const row = document.createElement("tr");
+    row.innerHTML = "<td></td><td></td><td></td><td></td><td></td>";
+    row.children[0].textContent = version.id;
+    row.children[1].textContent = "Vanilla";
+    row.children[2].textContent = version.type || "release";
+    row.children[3].textContent = "Remote";
+    row.children[4].textContent = "Available";
+    el.versionTableBody.append(row);
+  }
+}
+
+async function loadMods() {
+  try {
+    const mods = await window.launcherApi.listMods();
+    el.modsTableBody.innerHTML = "";
+    if (mods.length === 0) {
+      const row = document.createElement("tr");
+      row.innerHTML = '<td colspan="6">No .jar mods found.</td>';
+      el.modsTableBody.append(row);
+      return;
+    }
+    for (const mod of mods) {
+      const row = document.createElement("tr");
+      row.innerHTML = "<td></td><td></td><td></td><td></td><td></td><td></td>";
+      row.children[0].textContent = mod.filename;
+      row.children[1].textContent = mod.name;
+      row.children[2].textContent = mod.version || "-";
+      row.children[3].textContent = mod.loader;
+      row.children[4].textContent = mod.status;
+      const button = document.createElement("button");
+      button.textContent = "Delete";
+      button.addEventListener("click", async () => {
+        await window.launcherApi.deleteMod(mod.path);
+        await loadMods();
+      });
+      row.children[5].append(button);
+      el.modsTableBody.append(row);
+    }
+  } catch (error) {
+    appendLog(`Mod refresh failed: ${error.message}`);
+  }
+}
+
+async function addMods() {
+  await window.launcherApi.addMods();
+  await loadMods();
+}
+
+async function openFolder(folderKey) {
+  try {
+    const folder = await window.launcherApi.openFolder(folderKey);
+    appendLog(`Opened folder: ${folder}`);
+  } catch (error) {
+    appendLog(`Open folder failed: ${error.message}`);
+  }
 }
 
 async function createInstance() {
@@ -421,6 +533,8 @@ async function detectJava(quiet) {
   state.detectedJava = detected;
   if (detected.ok) {
     el.detectedJavaLabel.textContent = `Detected Java ${detected.version}`;
+    el.javaArchLabel.textContent = navigator.userAgent.includes("ARM") ? "ARM64" : "System";
+    el.javaVendorLabel.textContent = detected.message.split("\n")[0] || "Detected";
     if (!quiet || (!el.javaPathInput.value && !el.dialogJavaPathInput.value)) {
       el.javaPathInput.value = detected.javaPath;
       el.dialogJavaPathInput.value = detected.javaPath;
@@ -438,6 +552,7 @@ async function checkAndApplyJavaPath(javaPath, quiet) {
     el.javaPathInput.value = checked.javaPath;
     el.dialogJavaPathInput.value = checked.javaPath;
     el.detectedJavaLabel.textContent = `Detected Java ${checked.version}`;
+    el.javaVendorLabel.textContent = checked.message.split("\n")[0] || "Detected";
     if (!quiet) appendLog(`Java OK ${checked.version}: ${checked.javaPath}`);
     return true;
   }
@@ -482,6 +597,25 @@ function updateProgress(payload) {
 function appendLog(message) {
   el.logConsole.textContent += `${String(message).trimEnd()}\n`;
   el.logConsole.scrollTop = el.logConsole.scrollHeight;
+}
+
+async function copyLogs() {
+  await window.launcherApi.copyLogs(el.logConsole.textContent);
+  appendLog("Copied logs to clipboard.");
+}
+
+async function exportLogs() {
+  const filePath = await window.launcherApi.exportLogs(el.logConsole.textContent);
+  if (filePath) appendLog(`Exported logs to ${filePath}`);
+}
+
+function renderLogSearch() {
+  const query = el.logSearchInput.value.trim().toLowerCase();
+  if (!query) {
+    el.logConsole.dataset.search = "";
+    return;
+  }
+  el.logConsole.dataset.search = query;
 }
 
 boot();
