@@ -5,7 +5,8 @@
   "main": "main/main.js",
   "scripts": {
     "start": "electron .",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "build": "electron-builder --mac dmg zip --publish never"
   },
   "keywords": [
     "electron",
@@ -15,6 +16,29 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^31.7.7"
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "dev.pxdns.modelforge",
+    "productName": "ModelForge Launcher",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main/**/*",
+      "renderer/**/*",
+      "core/**/*",
+      "instances/.gitkeep",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    }
   }
 }
