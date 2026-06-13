@@ -1,17 +1,18 @@
 {
-  "name": "vanilla-minecraft-launcher-mvp",
+  "name": "modelforge-launcher",
   "version": "0.1.0",
-  "description": "A lightweight Electron Minecraft launcher MVP for vanilla official game files.",
+  "description": "A lightweight desktop launcher for managing vanilla Minecraft installations.",
   "main": "main/main.js",
   "scripts": {
     "start": "electron .",
-    "smoke": "node scripts/smoke.js",
+    "check": "node scripts/check.js",
     "build": "electron-builder --mac dmg zip --publish never"
   },
   "keywords": [
     "electron",
     "minecraft",
-    "launcher"
+    "launcher",
+    "modelforge"
   ],
   "author": "",
   "license": "MIT",

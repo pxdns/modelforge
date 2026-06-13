@@ -1,7 +1,7 @@
 const path = require("path");
 const { MinecraftLauncher } = require("../core/launcher");
 
-const modules = [
+[
   "../core/fsUtils",
   "../core/http",
   "../core/instanceManager",
@@ -11,17 +11,12 @@ const modules = [
   "../core/rules",
   "../core/settingsStore",
   "../core/versionManager"
-];
+].forEach(require);
 
-for (const modulePath of modules) {
-  require(modulePath);
-}
-
-async function testArgumentBuilder() {
+async function main() {
   const settings = {
     get(key) {
-      if (key === "gameDir") return path.join("/tmp", "minecraft-game");
-      return "";
+      return key === "gameDir" ? path.join("/tmp", "minecraft-game") : "";
     }
   };
   const versionManager = {
@@ -30,10 +25,11 @@ async function testArgumentBuilder() {
       path.join("/tmp", "minecraft-game", "versions", "1.test", "1.test.jar")
     ]
   };
+
   const launcher = new MinecraftLauncher(settings, versionManager);
   const args = await launcher.buildArguments(
     {
-      name: "Smoke Test",
+      name: "Check",
       ramMb: 2048,
       offlineUsername: "Local_Player",
       minecraftDir: path.join("/tmp", "minecraft-instance"),
@@ -61,17 +57,15 @@ async function testArgumentBuilder() {
   );
 
   if (!args.includes("net.minecraft.client.main.Main")) {
-    throw new Error("Main class was not included in launch arguments.");
+    throw new Error("Launch arguments are missing the main class.");
   }
   if (args.includes("--demo")) {
-    throw new Error("Feature-gated demo arguments should not be enabled by default.");
+    throw new Error("Feature-gated launch arguments were enabled unexpectedly.");
   }
 }
 
-testArgumentBuilder()
-  .then(() => {
-    console.log("Smoke test passed.");
-  })
+main()
+  .then(() => console.log("Checks passed."))
   .catch((error) => {
     console.error(error);
     process.exit(1);

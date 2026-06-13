@@ -1,4 +1,4 @@
-name: Build macOS Launcher
+name: Build
 
 on:
   push:
@@ -23,15 +23,15 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run launcher smoke test
-        run: npm run smoke
+      - name: Run checks
+        run: npm run check
 
-      - name: Build packaged launcher
+      - name: Package app
         run: npm run build
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - name: Upload launcher artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: modelforge-launcher-macos

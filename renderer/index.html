@@ -3,21 +3,21 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vanilla Launcher MVP</title>
+    <title>ModelForge Launcher</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <main class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <div class="mark">VL</div>
+          <div class="mark">MF</div>
           <div>
-            <h1>Vanilla Launcher</h1>
-            <p>Minecraft MVP</p>
+            <h1>ModelForge</h1>
+            <p>Instance launcher</p>
           </div>
         </div>
 
-        <button id="createInstanceButton" class="primary-action">+ New Instance</button>
+        <button id="createInstanceButton" class="primary-action">New Instance</button>
         <div id="instanceList" class="instance-list"></div>
       </aside>
 
@@ -25,7 +25,7 @@
         <header class="topbar">
           <div>
             <h2 id="selectedTitle">Select an instance</h2>
-            <p id="selectedSubtitle">Create or choose an instance to configure and play.</p>
+            <p id="selectedSubtitle">Choose an instance to configure and launch.</p>
           </div>
           <button id="refreshVersionsButton" class="ghost-button">Refresh Versions</button>
         </header>
@@ -39,7 +39,7 @@
             </div>
           </label>
           <label>
-            <span>Offline Display Name</span>
+            <span>Display Name</span>
             <input id="usernameInput" type="text" maxlength="16" placeholder="Player">
           </label>
         </section>
@@ -48,7 +48,7 @@
           <form id="instanceForm" class="panel">
             <div class="panel-head">
               <h3>Instance</h3>
-              <p>Vanilla version, memory, and Java runtime.</p>
+              <p>Version, memory, and Java runtime.</p>
             </div>
 
             <label>
@@ -83,7 +83,7 @@
           <section class="panel launch-panel">
             <div class="panel-head">
               <h3>Launch</h3>
-              <p>Downloads official vanilla files when needed.</p>
+              <p>Downloads missing game files before launch.</p>
             </div>
             <button id="playButton" class="play-button" disabled>Play</button>
             <button id="stopButton" class="ghost-button" disabled>Stop</button>

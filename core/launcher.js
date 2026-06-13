@@ -4,7 +4,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const { spawn } = require("child_process");
 const { ensureDir } = require("./fsUtils");
-const { currentOsName, isAllowed } = require("./rules");
+const { isAllowed } = require("./rules");
 const { JavaDetector } = require("./javaDetector");
 
 class MinecraftLauncher extends EventEmitter {
@@ -113,7 +113,7 @@ class MinecraftLauncher extends EventEmitter {
       user_type: "legacy",
       version_type: versionJson.type || "release",
       natives_directory: nativesDir,
-      launcher_name: "VanillaLauncherMVP",
+      launcher_name: "ModelForge",
       launcher_version: "0.1.0",
       classpath,
       library_directory: path.join(this.settingsStore.get("gameDir"), "libraries"),

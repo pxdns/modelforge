@@ -35,7 +35,7 @@ const el = {
 
 async function boot() {
   wireEvents();
-  appendLog("Launcher ready.");
+  appendLog("ModelForge ready.");
   state.settings = await window.launcherApi.getSettings();
   el.gameDirInput.value = state.settings.gameDir;
   el.usernameInput.value = state.settings.offlineUsername || "Player";
@@ -75,11 +75,11 @@ function wireEvents() {
 
 async function loadVersions(forceRefresh) {
   try {
-    appendLog(forceRefresh ? "Refreshing Mojang version manifest..." : "Loading versions...");
+    appendLog(forceRefresh ? "Refreshing version index..." : "Loading versions...");
     const manifest = await window.launcherApi.listVersions(forceRefresh);
     state.versions = manifest.versions.filter((version) => version.type === "release");
     renderVersions();
-    appendLog(`Loaded ${state.versions.length} release versions.`);
+    appendLog(`Loaded ${state.versions.length} release builds.`);
   } catch (error) {
     appendLog(`Version load failed: ${error.message}`);
   }
@@ -134,7 +134,7 @@ function renderSelectedInstance() {
   el.playButton.disabled = !instance || state.launching;
   if (!instance) {
     el.selectedTitle.textContent = "Select an instance";
-    el.selectedSubtitle.textContent = "Create or choose an instance to configure and play.";
+    el.selectedSubtitle.textContent = "Choose an instance to configure and launch.";
     return;
   }
 
@@ -163,7 +163,7 @@ async function createInstance() {
   if (state.versions.length === 0) await loadVersions(false);
   const latest = state.versions[0]?.id || "";
   const instance = await window.launcherApi.createInstance({
-    name: `Vanilla ${latest}`,
+    name: latest ? `Minecraft ${latest}` : "New Instance",
     versionId: latest,
     ramMb: Number(el.ramSlider.value || 2048),
     javaPath: el.javaPathInput.value.trim(),
