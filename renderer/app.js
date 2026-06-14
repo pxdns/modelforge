@@ -52,6 +52,8 @@ const el = {
   themeToggle: $("#themeToggle"),
   gameDirInput: $("#gameDirInput"),
   selectGameDirButton: $("#selectGameDirButton"),
+  resetGameDirButton: $("#resetGameDirButton"),
+  gameDirHint: $("#gameDirHint"),
   separateFoldersSelect: $("#separateFoldersSelect"),
   windowWidthInput: $("#windowWidthInput"),
   windowHeightInput: $("#windowHeightInput"),
@@ -144,6 +146,7 @@ function wireEvents() {
   el.tabs.forEach((tab) => tab.addEventListener("click", () => showView(tab.dataset.view)));
   el.themeToggle.addEventListener("click", toggleTheme);
   el.selectGameDirButton.addEventListener("click", selectGameDir);
+  el.resetGameDirButton.addEventListener("click", resetGameDir);
   el.saveSettingsButton.addEventListener("click", saveSettings);
   el.resetSettingsButton.addEventListener("click", resetSettings);
   el.homeButton.addEventListener("click", () => showView("playView"));
@@ -219,6 +222,9 @@ function applyTheme() {
 function renderSettings() {
   const settings = state.settings;
   el.gameDirInput.value = settings.gameDir || "";
+  el.gameDirHint.textContent = settings.gameDir === "/private/var/tmp/dih/tlauncher"
+    ? "Using the default macOS game root."
+    : "Default macOS root: /private/var/tmp/dih/tlauncher";
   el.separateFoldersSelect.value = settings.separateFoldersMode;
   el.windowWidthInput.value = settings.windowWidth;
   el.windowHeightInput.value = settings.windowHeight;
@@ -314,6 +320,13 @@ async function selectGameDir() {
   if (!gameDir) return;
   el.gameDirInput.value = gameDir;
   state.settings.gameDir = gameDir;
+  await saveSettings();
+  await loadVersions(false);
+}
+
+async function resetGameDir() {
+  el.gameDirInput.value = "/private/var/tmp/dih/tlauncher";
+  state.settings.gameDir = "/private/var/tmp/dih/tlauncher";
   await saveSettings();
   await loadVersions(false);
 }

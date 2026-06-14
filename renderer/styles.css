@@ -469,11 +469,17 @@ progress {
 
 .inline-field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 132px;
+  grid-template-columns: minmax(0, 1fr) 132px 132px;
 }
 
 .inline-field button {
   border-left: 0;
+}
+
+.wide small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .launch-button {
@@ -678,6 +684,10 @@ tbody tr[data-status="Disabled"] td:first-child {
 .inline-field button {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
+}
+
+.inline-field button:nth-of-type(2) {
+  border-radius: 0;
 }
 
 .panel,

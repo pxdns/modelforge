@@ -34,12 +34,11 @@ class ModManager {
     await ensureDir(active);
     await ensureDir(disabled);
 
-    const reportHints = await this.getCrashHints(instance);
     const mods = await this.scanDir(active, true, instance);
     const moved = [];
 
     for (const mod of mods) {
-      const result = this.evaluateMod(mod, instance, versionJson, reportHints);
+      const result = this.evaluateMod(mod, instance, versionJson);
       if (!result.incompatible) continue;
       const destination = await this.moveToDisabled(mod.path, disabled);
       moved.push({
@@ -118,15 +117,10 @@ class ModManager {
     return "fabric";
   }
 
-  evaluateMod(mod, instance, versionJson, reportHints) {
+  evaluateMod(mod, instance, versionJson) {
     const loader = normalizeLoader(instance.loader || this.settingsStore.get("loader") || "vanilla");
     const modLoader = normalizeLoader(mod.loader);
     const versionId = versionJson?.id || instance.versionId || "";
-    const crashMatch = reportHints.some((hint) => matchesHint(mod, hint));
-
-    if (crashMatch) {
-      return { incompatible: true, reason: "Previous crash matched this mod" };
-    }
 
     if (loader === "vanilla") {
       if (modLoader !== "unknown") {
@@ -174,38 +168,6 @@ class ModManager {
     await fs.rename(sourcePath, destination);
     return destination;
   }
-
-  async getCrashHints(instance) {
-    const hints = [];
-    const crashDir = path.join(instance.minecraftDir, "crash-reports");
-    const logDir = path.join(instance.minecraftDir, "logs");
-    const files = [];
-
-    try {
-      for (const entry of await fs.readdir(crashDir, { withFileTypes: true })) {
-        if (entry.isFile() && entry.name.endsWith(".txt")) {
-          files.push(path.join(crashDir, entry.name));
-        }
-      }
-    } catch {
-      // Optional.
-    }
-
-    try {
-      const latestLog = path.join(logDir, "latest.log");
-      if (await pathExists(latestLog)) files.push(latestLog);
-    } catch {
-      // Optional.
-    }
-
-    for (const file of files.slice(-3)) {
-      const text = await fs.readFile(file, "utf8").catch(() => "");
-      const packageHints = extractCrashHints(text);
-      hints.push(...packageHints);
-    }
-
-    return hints;
-  }
 }
 
 function normalizeLoader(value) {
@@ -226,40 +188,6 @@ function parseTomlMetadata(text) {
     ? (text.match(/modLoader\s*=\s*"([^"]+)"/i)?.[1] || "forge")
     : "forge";
   return { modId, version, displayName, loader };
-}
-
-function extractCrashHints(text) {
-  const hints = [];
-  const patterns = [
-    /NoClassDefFoundError:\s+([A-Za-z0-9_./$-]+)/g,
-    /ClassNotFoundException:\s+([A-Za-z0-9_./$-]+)/g
-  ];
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(text))) {
-      const token = String(match[1] || "").toLowerCase();
-      if (token.includes("modmenu")) hints.push({ id: "modmenu", token });
-      if (token.includes("fabric")) hints.push({ id: "fabric", token });
-      if (token.includes("quilt")) hints.push({ id: "quilt", token });
-      if (token.includes("forge")) hints.push({ id: "forge", token });
-    }
-  }
-  return hints;
-}
-
-function matchesHint(mod, hint) {
-  const haystack = [
-    mod.modId,
-    mod.name,
-    mod.filename,
-    mod.metadata?.id,
-    mod.metadata?.name,
-    ...(Array.isArray(mod.metadata?.entrypoints) ? mod.metadata.entrypoints : [])
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  return hint.id && haystack.includes(hint.id.toLowerCase());
 }
 
 function matchesMinecraftRange(range, version) {

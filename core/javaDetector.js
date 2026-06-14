@@ -1,10 +1,11 @@
 const fs = require("fs/promises");
 const path = require("path");
 const { execFile } = require("child_process");
+const { getLegacyRuntimeRoots } = require("./legacyCompat");
 
 class JavaDetector {
   async detect(options = {}) {
-    const candidates = await this.getCandidates(options.gameDir);
+    const candidates = await this.getCandidates(options);
     for (const candidate of candidates) {
       const result = await this.check(candidate);
       if (result.ok) return { javaPath: candidate, ...result };
@@ -66,10 +67,21 @@ class JavaDetector {
     return "";
   }
 
-  async getCandidates(gameDir = "") {
+  async getCandidates(options = {}) {
+    const gameDir = options.gameDir || "";
+    const runtimeRoots = [];
+    if (Array.isArray(options.runtimeRoots)) {
+      runtimeRoots.push(...options.runtimeRoots.filter(Boolean));
+    }
+    if (options.runtimeRoot) runtimeRoots.push(options.runtimeRoot);
+    runtimeRoots.push(...this.getDefaultRuntimeRoots(), ...getLegacyRuntimeRoots());
+
     const candidates = [];
     const executable = process.platform === "win32" ? "java.exe" : "java";
 
+    for (const root of runtimeRoots) {
+      candidates.push(...await this.getBundledRuntimeCandidates(root));
+    }
     if (gameDir) {
       candidates.push(...await this.getBundledCandidates(gameDir));
     }
@@ -95,6 +107,37 @@ class JavaDetector {
     }
 
     return [...new Set(candidates)];
+  }
+
+  async getBundledRuntimeCandidates(root) {
+    const candidates = [];
+    const executable = process.platform === "win32" ? "java.exe" : "java";
+    const roots = [
+      path.join(root, "Contents", "runtime", "Contents", "Home", "bin", executable),
+      path.join(root, "runtime", "Contents", "Home", "bin", executable),
+      path.join(root, "Contents", "runtime", "Home", "bin", executable),
+      path.join(root, "Contents", "runtime", "bin", executable),
+      path.join(root, "runtime", "bin", executable)
+    ];
+
+    for (const candidate of roots) {
+      candidates.push(candidate);
+    }
+
+    return candidates;
+  }
+
+  getDefaultRuntimeRoots() {
+    const roots = [];
+    if (process.resourcesPath) {
+      roots.push(path.join(process.resourcesPath, "runtime"));
+    }
+    if (process.execPath) {
+      const appRoot = path.resolve(path.dirname(process.execPath), "..");
+      roots.push(path.join(appRoot, "runtime"));
+      roots.push(path.join(appRoot, "Contents", "runtime"));
+    }
+    return roots;
   }
 
   async getBundledCandidates(gameDir) {

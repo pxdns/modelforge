@@ -1,6 +1,7 @@
 const path = require("path");
 const { defaultLauncherDir, defaultMinecraftDir } = require("./paths");
 const { ensureDir, readJson, writeJson } = require("./fsUtils");
+const { readLegacyCfg, writeLegacyCfg } = require("./legacyCompat");
 
 class SettingsStore {
   constructor() {
@@ -11,7 +12,7 @@ class SettingsStore {
 
   async init() {
     await ensureDir(this.launcherDir);
-    this.settings = await readJson(this.filePath, {
+    const jsonSettings = await readJson(this.filePath, {
       launcherDir: this.launcherDir,
       instancesDir: path.join(process.cwd(), "instances"),
       gameDir: defaultMinecraftDir(),
@@ -50,6 +51,24 @@ class SettingsStore {
       suggestServers: false,
       theme: "dark"
     });
+    const legacyCfg = await readLegacyCfg(path.join(this.launcherDir, "TL.cfg"));
+    this.settings = {
+      ...jsonSettings,
+      ...(legacyCfg ? {
+        gameDir: legacyCfg["Launcher.gameDir"] || jsonSettings.gameDir,
+        javaMode: legacyCfg["Launcher.javaMode"] || jsonSettings.javaMode,
+        javaPath: legacyCfg["Launcher.javaPath"] || jsonSettings.javaPath,
+        offlineUsername: legacyCfg["Launcher.offlineUsername"] || jsonSettings.offlineUsername,
+        ramMb: Number(legacyCfg["Launcher.ramMb"] || jsonSettings.ramMb),
+        windowWidth: Number(legacyCfg["Launcher.windowWidth"] || jsonSettings.windowWidth),
+        windowHeight: Number(legacyCfg["Launcher.windowHeight"] || jsonSettings.windowHeight),
+        fullscreen: String(legacyCfg["Launcher.fullscreen"] || jsonSettings.fullscreen) === "true",
+        theme: legacyCfg["Launcher.theme"] || jsonSettings.theme
+      } : {})
+    };
+    if (process.platform === "darwin" && !String(this.settings.gameDir || "").trim()) {
+      this.settings.gameDir = defaultMinecraftDir();
+    }
     await this.save();
   }
 
@@ -73,6 +92,7 @@ class SettingsStore {
 
   async save() {
     await writeJson(this.filePath, this.settings);
+    await writeLegacyCfg(path.join(this.launcherDir, "TL.cfg"), this.settings);
   }
 }
 
