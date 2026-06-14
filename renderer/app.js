@@ -441,7 +441,8 @@ function renderSelectedInstance() {
   el.selectedInstanceJava.textContent = instance.javaPath ? "Custom" : (state.settings.javaPath ? "Custom" : "Auto");
   el.selectedInstanceFolder.textContent = instance.minecraftDir || state.settings.gameDir || "-";
   el.instanceNameInput.value = instance.name;
-  el.versionSelect.value = instance.versionId;
+  const fallbackVersion = instance.versionId || state.versions[0]?.id || "";
+  el.versionSelect.value = fallbackVersion;
   el.usernameInput.value = instance.offlineUsername || state.settings.offlineUsername || "Player";
   el.javaPathInput.value = instance.javaPath || state.settings.javaPath || "";
 }
