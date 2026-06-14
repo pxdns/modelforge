@@ -132,8 +132,8 @@ class VersionManager {
     const downloads = [];
     for (const library of versionJson.libraries || []) {
       if (!isAllowed(library.rules)) continue;
-      const artifact = library.downloads?.artifact;
-      if (artifact) {
+      const artifact = resolveLibraryArtifact(library);
+      if (artifact?.url) {
         downloads.push(this.downloadLibraryArtifact(library, artifact, onProgress));
       }
 
@@ -198,8 +198,12 @@ class VersionManager {
     const entries = [];
     for (const library of versionJson.libraries || []) {
       if (!isAllowed(library.rules)) continue;
-      const artifact = library.downloads?.artifact;
-      if (artifact) entries.push(path.join(this.gameDir, "libraries", resolveArtifactPath(library, artifact)));
+      const artifact = resolveLibraryArtifact(library);
+      if (artifact) {
+        entries.push(path.join(this.gameDir, "libraries", resolveArtifactPath(library, artifact)));
+      } else {
+        entries.push(path.join(this.gameDir, "libraries", resolveArtifactPath(library, null)));
+      }
     }
     entries.push(path.join(this.gameDir, "versions", versionJson.id, `${versionJson.id}.jar`));
     return entries;
@@ -262,6 +266,28 @@ function resolveArtifactPath(library, artifact, classifier = null) {
   const version = coords[2] || "unknown";
   const filename = classifier ? `${name}-${version}-${classifier}.jar` : `${name}-${version}.jar`;
   return path.join(...group.split("."), name, version, filename);
+}
+
+function resolveLibraryArtifact(library) {
+  if (library?.downloads?.artifact) return library.downloads.artifact;
+
+  const coords = String(library?.name || "").split(":");
+  if (coords.length < 3) return null;
+
+  const pathName = resolveArtifactPath(library, null);
+  const baseUrl = String(library?.url || "").trim();
+  if (!baseUrl || baseUrl.startsWith("/")) {
+    return {
+      path: pathName,
+      url: ""
+    };
+  }
+
+  const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  return {
+    path: pathName,
+    url: `${normalizedBase}${pathName.replace(/\\/g, "/")}`
+  };
 }
 
 async function extractZip(zipPath, destination, excludes) {
