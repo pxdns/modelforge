@@ -21,9 +21,10 @@ class MinecraftLauncher extends EventEmitter {
     const versionJson = await this.versionManager.getVersionJson(versionId);
 
     if (this.modManager) {
-      const disabled = await this.modManager.quarantineIncompatibleMods(instance, versionJson);
-      if (disabled.length > 0) {
-        this.emit("log", `Disabled ${disabled.length} incompatible mod${disabled.length === 1 ? "" : "s"}.`);
+      const mods = await this.modManager.listMods(instance);
+      const incompatible = mods.filter((mod) => this.modManager.evaluateMod(mod, instance, versionJson).incompatible);
+      if (incompatible.length > 0) {
+        this.emit("log", `Found ${incompatible.length} incompatible mod${incompatible.length === 1 ? "" : "s"}; leaving them in place.`);
       }
     }
 
