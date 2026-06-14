@@ -4,12 +4,14 @@ const path = require("path");
 const { SettingsStore } = require("../core/settingsStore");
 const { VersionManager } = require("../core/versionManager");
 const { InstanceManager } = require("../core/instanceManager");
+const { ModManager } = require("../core/modManager");
 const { JavaDetector } = require("../core/javaDetector");
 const { MinecraftLauncher } = require("../core/launcher");
 
 const settings = new SettingsStore();
 const versionManager = new VersionManager(settings);
 const instanceManager = new InstanceManager(settings);
+const modManager = new ModManager(settings);
 const javaDetector = new JavaDetector();
 let launcher = null;
 const windows = new Set();
@@ -90,40 +92,35 @@ ipcMain.handle("dialog:select-java", async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
-ipcMain.handle("folders:open", async (_event, folderKey) => {
+ipcMain.handle("folders:open", async (_event, folderKey, instanceId = null) => {
   const relative = folderMap[folderKey];
   if (relative === undefined) throw new Error(`Unknown folder: ${folderKey}`);
-  const target = relative ? path.join(settings.get("gameDir"), relative) : settings.get("gameDir");
+  const instance = instanceId ? await instanceManager.getInstance(instanceId) : null;
+  const baseDir = instance?.minecraftDir || settings.get("gameDir");
+  const target = relative ? path.join(baseDir, relative) : baseDir;
   await fs.mkdir(target, { recursive: true });
   const error = await shell.openPath(target);
   if (error) throw new Error(error);
   return target;
 });
 
-ipcMain.handle("mods:list", async () => {
-  const modsDir = path.join(settings.get("gameDir"), "mods");
-  await fs.mkdir(modsDir, { recursive: true });
-  const entries = await fs.readdir(modsDir, { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".jar"))
-    .map((entry) => ({
-      filename: entry.name,
-      name: entry.name.replace(/\.jar$/i, ""),
-      version: detectVersion(entry.name),
-      loader: "Unknown",
-      status: "Enabled",
-      path: path.join(modsDir, entry.name)
-    }))
-    .sort((a, b) => a.filename.localeCompare(b.filename));
+ipcMain.handle("mods:list", async (_event, instanceId = null) => {
+  const instance = instanceId ? await instanceManager.getInstance(instanceId) : null;
+  return modManager.listMods(instance || {
+    minecraftDir: settings.get("gameDir"),
+    versionId: "",
+    loader: "Vanilla"
+  });
 });
 
-ipcMain.handle("mods:add", async () => {
+ipcMain.handle("mods:add", async (_event, instanceId = null) => {
   const result = await dialog.showOpenDialog({
     properties: ["openFile", "multiSelections"],
     filters: [{ name: "Minecraft Mods", extensions: ["jar"] }]
   });
   if (result.canceled) return [];
-  const modsDir = path.join(settings.get("gameDir"), "mods");
+  const instance = instanceId ? await instanceManager.getInstance(instanceId) : null;
+  const modsDir = path.join(instance?.minecraftDir || settings.get("gameDir"), "mods");
   await fs.mkdir(modsDir, { recursive: true });
   for (const filePath of result.filePaths) {
     await fs.copyFile(filePath, path.join(modsDir, path.basename(filePath)));
@@ -132,9 +129,14 @@ ipcMain.handle("mods:add", async () => {
 });
 
 ipcMain.handle("mods:delete", async (_event, modPath) => {
-  const modsDir = path.resolve(settings.get("gameDir"), "mods");
   const target = path.resolve(modPath);
-  if (!target.startsWith(`${modsDir}${path.sep}`)) throw new Error("Refusing to delete a file outside the mods folder.");
+  const roots = [
+    path.resolve(settings.get("gameDir")),
+    path.resolve(settings.get("instancesDir") || path.join(process.cwd(), "instances"))
+  ];
+  if (!roots.some((root) => target.startsWith(`${root}${path.sep}`) || target === root)) {
+    throw new Error("Refusing to delete a file outside the launcher folders.");
+  }
   await fs.rm(target, { force: true });
   return true;
 });
@@ -177,7 +179,7 @@ ipcMain.handle("instances:update", async (_event, instanceId, patch) => {
   return instanceManager.updateInstance(instanceId, patch);
 });
 
-ipcMain.handle("java:detect", async () => javaDetector.detect());
+ipcMain.handle("java:detect", async () => javaDetector.detect({ gameDir: settings.get("gameDir") }));
 
 ipcMain.handle("java:check", async (_event, javaPath) => javaDetector.check(javaPath));
 
@@ -185,7 +187,7 @@ ipcMain.handle("launch:start", async (event, instanceId) => {
   const instance = await instanceManager.getInstance(instanceId);
   if (!instance) throw new Error(`Instance not found: ${instanceId}`);
 
-  launcher = new MinecraftLauncher(settings, versionManager);
+  launcher = new MinecraftLauncher(settings, versionManager, modManager);
   launcher.on("log", (line) => event.sender.send("launch-log", line));
   launcher.on("exit", (result) => event.sender.send("launch-exit", result));
   launcher.on("progress", (payload) => event.sender.send("download-progress", payload));
@@ -198,10 +200,6 @@ ipcMain.handle("launch:stop", async () => {
   if (!launcher) return false;
   return launcher.stop();
 });
-
-function detectVersion(filename) {
-  return filename.match(/(?:^|[-_])(\d+\.\d+(?:\.\d+)?)/)?.[1] || "";
-}
 
 function applyTheme(theme) {
   nativeTheme.themeSource = theme === "light" ? "light" : "dark";

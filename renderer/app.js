@@ -2,7 +2,7 @@ const DEFAULTS = {
   separateFoldersMode: "none",
   ramMb: 4096,
   autoMemory: true,
-  javaMode: "custom",
+  javaMode: "recommended",
   javaPath: "",
   javaArgs: "",
   minecraftArgs: "",
@@ -89,6 +89,7 @@ const el = {
   instanceNameInput: $("#instanceNameInput"),
   usernameInput: $("#usernameInput"),
   versionSelect: $("#versionSelect"),
+  loaderSelect: $("#loaderSelect"),
   javaPathInput: $("#javaPathInput"),
   selectJavaButton: $("#selectJavaButton"),
   detectJavaButton: $("#detectJavaButton"),
@@ -135,7 +136,6 @@ async function boot() {
   renderSettings();
   await loadVersions(false);
   await loadInstances();
-  await loadMods();
   await detectJava(true);
   appendLog("ModelForge ready.");
 }
@@ -146,7 +146,7 @@ function wireEvents() {
   el.selectGameDirButton.addEventListener("click", selectGameDir);
   el.saveSettingsButton.addEventListener("click", saveSettings);
   el.resetSettingsButton.addEventListener("click", resetSettings);
-  el.homeButton.addEventListener("click", () => showView("launcherView"));
+  el.homeButton.addEventListener("click", () => showView("playView"));
   el.ramSlider.addEventListener("input", () => syncRam("slider"));
   el.ramNumberInput.addEventListener("input", () => syncRam("number"));
   el.openJavaSettingsButton.addEventListener("click", openJavaDialog);
@@ -379,6 +379,7 @@ async function loadInstances() {
   }
   renderInstances();
   renderSelectedInstance();
+  await loadMods();
 }
 
 function renderVersions() {
@@ -410,9 +411,10 @@ function renderInstances() {
   if (state.selectedInstance) el.instanceSelect.value = state.selectedInstance.id;
 }
 
-function selectInstanceFromDropdown() {
+async function selectInstanceFromDropdown() {
   state.selectedInstance = state.instances.find((instance) => instance.id === el.instanceSelect.value) || null;
   renderSelectedInstance();
+  await loadMods();
 }
 
 function renderSelectedInstance() {
@@ -428,6 +430,7 @@ function renderSelectedInstance() {
     el.selectedInstanceRam.textContent = `${state.settings.ramMb || 4096} MiB`;
     el.selectedInstanceJava.textContent = state.settings.javaPath ? "Custom" : "Auto";
     el.selectedInstanceFolder.textContent = state.settings.gameDir || "-";
+    el.loaderSelect.value = "Vanilla";
     return;
   }
 
@@ -443,6 +446,7 @@ function renderSelectedInstance() {
   el.instanceNameInput.value = instance.name;
   const fallbackVersion = instance.versionId || state.versions[0]?.id || "";
   el.versionSelect.value = fallbackVersion;
+  el.loaderSelect.value = instance.loader || "Vanilla";
   el.usernameInput.value = instance.offlineUsername || state.settings.offlineUsername || "Player";
   el.javaPathInput.value = instance.javaPath || state.settings.javaPath || "";
 }
@@ -463,7 +467,7 @@ function renderVersionTable() {
 
 async function loadMods() {
   try {
-    const mods = await window.launcherApi.listMods();
+    const mods = await window.launcherApi.listMods(state.selectedInstance?.id || null);
     el.modsTableBody.innerHTML = "";
     if (mods.length === 0) {
       const row = document.createElement("tr");
@@ -473,6 +477,7 @@ async function loadMods() {
     }
     for (const mod of mods) {
       const row = document.createElement("tr");
+      row.dataset.status = mod.status || "";
       row.innerHTML = "<td></td><td></td><td></td><td></td><td></td><td></td>";
       row.children[0].textContent = mod.filename;
       row.children[1].textContent = mod.name;
@@ -494,13 +499,13 @@ async function loadMods() {
 }
 
 async function addMods() {
-  await window.launcherApi.addMods();
+  await window.launcherApi.addMods(state.selectedInstance?.id || null);
   await loadMods();
 }
 
 async function openFolder(folderKey) {
   try {
-    const folder = await window.launcherApi.openFolder(folderKey);
+    const folder = await window.launcherApi.openFolder(folderKey, state.selectedInstance?.id || null);
     appendLog(`Opened folder: ${folder}`);
   } catch (error) {
     appendLog(`Open folder failed: ${error.message}`);
@@ -515,6 +520,8 @@ async function createInstance() {
     versionId: latest,
     ramMb: state.settings.ramMb,
     autoMemory: state.settings.autoMemory,
+    loader: el.loaderSelect.value,
+    javaMode: state.settings.javaMode,
     javaPath: state.settings.javaPath,
     javaArgs: state.settings.javaArgs,
     minecraftArgs: state.settings.minecraftArgs,
@@ -540,6 +547,8 @@ async function saveSelectedInstance(event) {
     versionId: el.versionSelect.value,
     ramMb: state.settings.ramMb,
     autoMemory: state.settings.autoMemory,
+    loader: el.loaderSelect.value,
+    javaMode: state.settings.javaMode,
     javaPath: el.javaPathInput.value.trim() || state.settings.javaPath,
     javaArgs: state.settings.javaArgs,
     minecraftArgs: state.settings.minecraftArgs,
@@ -606,6 +615,7 @@ async function playSelectedInstance() {
     appendLog("Preparing launch...");
     const launch = await window.launcherApi.launch(state.selectedInstance.id);
     appendLog(`Started Java process ${launch.pid}.`);
+    await loadMods();
   } catch (error) {
     state.launching = false;
     el.playButton.disabled = false;

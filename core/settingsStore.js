@@ -19,7 +19,7 @@ class SettingsStore {
       offlineUsername: "Player",
       ramMb: 4096,
       autoMemory: true,
-      javaMode: "custom",
+      javaMode: "recommended",
       javaPath: "",
       javaArgs: "",
       minecraftArgs: "",

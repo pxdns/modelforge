@@ -3,8 +3,8 @@ const path = require("path");
 const { execFile } = require("child_process");
 
 class JavaDetector {
-  async detect() {
-    const candidates = await this.getCandidates();
+  async detect(options = {}) {
+    const candidates = await this.getCandidates(options.gameDir);
     for (const candidate of candidates) {
       const result = await this.check(candidate);
       if (result.ok) return { javaPath: candidate, ...result };
@@ -66,10 +66,13 @@ class JavaDetector {
     return "";
   }
 
-  async getCandidates() {
+  async getCandidates(gameDir = "") {
     const candidates = [];
     const executable = process.platform === "win32" ? "java.exe" : "java";
 
+    if (gameDir) {
+      candidates.push(...await this.getBundledCandidates(gameDir));
+    }
     if (process.env.JAVA_HOME) {
       candidates.push(path.join(process.env.JAVA_HOME, "bin", executable));
     }
@@ -92,6 +95,40 @@ class JavaDetector {
     }
 
     return [...new Set(candidates)];
+  }
+
+  async getBundledCandidates(gameDir) {
+    const root = path.join(gameDir, "mojang_jre");
+    const candidates = [];
+    const seen = new Set();
+
+    await this.walkJavaCandidates(root, candidates, seen, 0, 7);
+    return candidates;
+  }
+
+  async walkJavaCandidates(dir, candidates, seen, depth, maxDepth) {
+    if (depth > maxDepth) return;
+    let entries = [];
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isFile()) {
+        if ((process.platform === "win32" && entry.name.toLowerCase() === "java.exe") || (!entry.name.toLowerCase().endsWith(".exe") && entry.name === "java")) {
+          if (!seen.has(fullPath)) {
+            seen.add(fullPath);
+            candidates.push(fullPath);
+          }
+        }
+        continue;
+      }
+
+      await this.walkJavaCandidates(fullPath, candidates, seen, depth + 1, maxDepth);
+    }
   }
 
   async addFromDir(candidates, root, suffix) {

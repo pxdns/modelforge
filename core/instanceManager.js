@@ -59,6 +59,8 @@ class InstanceManager {
       windowHeight: Number(payload.windowHeight || this.settingsStore.get("windowHeight") || 530),
       fullscreen: payload.fullscreen ?? this.settingsStore.get("fullscreen") ?? false,
       offlineUsername: payload.offlineUsername || "Player",
+      loader: payload.loader || "Vanilla",
+      javaMode: payload.javaMode || this.settingsStore.get("javaMode") || "recommended",
       instanceDir,
       minecraftDir,
       createdAt: new Date().toISOString()
@@ -79,6 +81,8 @@ class InstanceManager {
       ramMb: Number(patch.ramMb ?? instance.ramMb),
       windowWidth: Number(patch.windowWidth ?? instance.windowWidth ?? 925),
       windowHeight: Number(patch.windowHeight ?? instance.windowHeight ?? 530),
+      loader: patch.loader || instance.loader || "Vanilla",
+      javaMode: patch.javaMode || instance.javaMode || this.settingsStore.get("javaMode") || "recommended",
       updatedAt: new Date().toISOString()
     };
     const updated = this.normalizeInstance(merged);

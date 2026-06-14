@@ -8,25 +8,34 @@ const { isAllowed } = require("./rules");
 const { JavaDetector } = require("./javaDetector");
 
 class MinecraftLauncher extends EventEmitter {
-  constructor(settingsStore, versionManager) {
+  constructor(settingsStore, versionManager, modManager = null) {
     super();
     this.settingsStore = settingsStore;
     this.versionManager = versionManager;
+    this.modManager = modManager;
     this.process = null;
   }
 
   async launch(instance) {
+    const versionJson = await this.versionManager.getVersionJson(instance.versionId);
+
+    if (this.modManager) {
+      const disabled = await this.modManager.quarantineIncompatibleMods(instance, versionJson);
+      if (disabled.length > 0) {
+        this.emit("log", `Disabled ${disabled.length} incompatible mod${disabled.length === 1 ? "" : "s"}.`);
+      }
+    }
+
     await this.versionManager.ensureVersion(instance.versionId, {
       onProgress: (payload) => this.emit("progress", payload)
     });
 
-    const versionJson = await this.versionManager.getVersionJson(instance.versionId);
     await ensureDir(instance.minecraftDir);
 
     const nativesDir = path.join(instance.instanceDir, "natives", instance.versionId);
     await this.versionManager.extractNatives(versionJson, nativesDir);
 
-    const javaPath = await this.resolveJavaPath(instance.javaPath);
+    const javaPath = await this.resolveJavaPath(instance);
     const args = await this.buildArguments(instance, versionJson, nativesDir);
 
     this.emit("log", `Launching ${instance.name} (${instance.versionId})`);
@@ -59,15 +68,24 @@ class MinecraftLauncher extends EventEmitter {
     return true;
   }
 
-  async resolveJavaPath(instanceJavaPath) {
+  async resolveJavaPath(instance) {
     const detector = new JavaDetector();
-    if (instanceJavaPath) {
+    const mode = String(instance?.javaMode || this.settingsStore.get("javaMode") || "recommended").toLowerCase();
+    const instanceJavaPath = instance?.javaPath || "";
+
+    if (mode === "custom" && instanceJavaPath) {
       const checked = await detector.check(instanceJavaPath);
       if (checked.ok) return checked.javaPath;
       throw new Error(checked.message);
     }
 
-    const detected = await detector.detect();
+    if (mode === "current") {
+      const detected = await detector.detect();
+      if (detected.ok) return detected.javaPath;
+      throw new Error(detected.message);
+    }
+
+    const detected = await detector.detect({ gameDir: this.settingsStore.get("gameDir") });
     if (detected.ok) return detected.javaPath;
     throw new Error(detected.message);
   }
