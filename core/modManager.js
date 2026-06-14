@@ -21,6 +21,8 @@ class ModManager {
     await ensureDir(active);
     await ensureDir(disabled);
 
+    await this.ensureProtectedMods(instance);
+
     const [enabledMods, disabledMods] = await Promise.all([
       this.scanDir(active, true, instance),
       this.scanDir(disabled, false, instance)
@@ -29,27 +31,49 @@ class ModManager {
     return [...enabledMods, ...disabledMods].sort((a, b) => a.filename.localeCompare(b.filename));
   }
 
-  async quarantineIncompatibleMods(instance, versionJson) {
+  async setModEnabled(instance, modPath, enabled) {
     const { active, disabled } = this.getModDirs(instance);
     await ensureDir(active);
     await ensureDir(disabled);
 
-    const mods = await this.scanDir(active, true, instance);
-    const moved = [];
-
-    for (const mod of mods) {
-      const result = this.evaluateMod(mod, instance, versionJson);
-      if (!result.incompatible) continue;
-      const destination = await this.moveToDisabled(mod.path, disabled);
-      moved.push({
-        ...mod,
-        path: destination,
-        status: "Disabled",
-        reason: result.reason
-      });
+    const sourcePath = path.resolve(modPath);
+    const targetDir = enabled ? active : disabled;
+    const allowedRoots = [path.resolve(active), path.resolve(disabled)];
+    if (!allowedRoots.some((root) => isInsidePath(sourcePath, root))) {
+      throw new Error("Refusing to modify a mod outside the launcher folders.");
     }
 
-    return moved;
+    const mod = await this.inspectMod(sourcePath, instance);
+    if (enabled && this.isProtectedMod(mod, instance)) {
+      return {
+        ...mod,
+        path: sourcePath,
+        status: "Enabled",
+        protected: true,
+        reason: "This mod stays enabled for this loader."
+      };
+    }
+
+    const destination = await this.moveModFile(sourcePath, targetDir);
+    return {
+      ...mod,
+      path: destination,
+      status: enabled ? "Enabled" : "Disabled",
+      protected: this.isProtectedMod(mod, instance),
+      reason: ""
+    };
+  }
+
+  async ensureProtectedMods(instance) {
+    const { active, disabled } = this.getModDirs(instance);
+    const entries = await fs.readdir(disabled, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".jar")) continue;
+      const sourcePath = path.join(disabled, entry.name);
+      const mod = await this.inspectMod(sourcePath, instance);
+      if (!this.isProtectedMod(mod, instance)) continue;
+      await this.moveModFile(sourcePath, active);
+    }
   }
 
   async scanDir(dir, enabled, instance) {
@@ -67,7 +91,9 @@ class ModManager {
         status: enabled ? "Enabled" : "Disabled",
         path: filePath,
         modId: info.id || "",
-        metadata: info.metadata || null
+        metadata: info.metadata || null,
+        protected: this.isProtectedMod(info, instance),
+        reason: this.getProtectionReason(info, instance)
       });
     }
     return mods;
@@ -156,13 +182,39 @@ class ModManager {
     return { incompatible: false, reason: "" };
   }
 
-  async moveToDisabled(sourcePath, disabledDir) {
-    await ensureDir(disabledDir);
-    let destination = path.join(disabledDir, path.basename(sourcePath));
+  isProtectedMod(mod, instance) {
+    const loader = normalizeLoader(instance?.loader || this.settingsStore.get("loader") || "vanilla");
+    const id = String(mod?.modId || mod?.metadata?.id || "").toLowerCase();
+    const filename = String(mod?.filename || "").toLowerCase();
+
+    if (loader === "fabric") {
+      return id === "fabric-api" || filename.includes("fabric-api");
+    }
+    if (loader === "quilt") {
+      return id === "quilted-fabric-api" || filename.includes("quilted-fabric-api");
+    }
+    if (loader === "forge" || loader === "neoforge") {
+      return id === "neoforge" || id === "minecraftforge";
+    }
+    return false;
+  }
+
+  getProtectionReason(mod, instance) {
+    if (!this.isProtectedMod(mod, instance)) return "";
+    const loader = normalizeLoader(instance?.loader || this.settingsStore.get("loader") || "vanilla");
+    if (loader === "fabric") return "Fabric API stays enabled for Fabric profiles.";
+    if (loader === "quilt") return "Quilted Fabric API stays enabled for Quilt profiles.";
+    if (loader === "forge" || loader === "neoforge") return "Loader support jar stays enabled.";
+    return "This mod stays enabled.";
+  }
+
+  async moveModFile(sourcePath, targetDir) {
+    await ensureDir(targetDir);
+    let destination = path.join(targetDir, path.basename(sourcePath));
     let index = 1;
     while (await pathExists(destination)) {
       const { name, ext } = path.parse(path.basename(sourcePath));
-      destination = path.join(disabledDir, `${name}-${index}${ext}`);
+      destination = path.join(targetDir, `${name}-${index}${ext}`);
       index += 1;
     }
     await fs.rename(sourcePath, destination);
@@ -232,6 +284,12 @@ function compareVersions(a, b) {
     if (l !== r) return l - r;
   }
   return 0;
+}
+
+function isInsidePath(candidate, parent) {
+  if (path.resolve(candidate) === path.resolve(parent)) return true;
+  const relative = path.relative(parent, candidate);
+  return relative && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
 function resolveMinecraftVersionId(versionJson, instance) {

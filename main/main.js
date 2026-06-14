@@ -132,7 +132,13 @@ ipcMain.handle("mods:add", async (_event, instanceId = null) => {
   return result.filePaths;
 });
 
-ipcMain.handle("mods:delete", async (_event, modPath) => {
+ipcMain.handle("mods:set-enabled", async (_event, modPath, enabled, instanceId = null) => {
+  const instance = instanceId ? await instanceManager.getInstance(instanceId) : null;
+  if (!instance) throw new Error("No instance selected.");
+  return modManager.setModEnabled(instance, modPath, Boolean(enabled));
+});
+
+ipcMain.handle("mods:delete", async (_event, modPath, instanceId = null) => {
   const target = path.resolve(modPath);
   const roots = [
     path.resolve(settings.get("gameDir")),
@@ -141,6 +147,17 @@ ipcMain.handle("mods:delete", async (_event, modPath) => {
   if (!roots.some((root) => target.startsWith(`${root}${path.sep}`) || target === root)) {
     throw new Error("Refusing to delete a file outside the launcher folders.");
   }
+
+  if (instanceId) {
+    const instance = await instanceManager.getInstance(instanceId);
+    if (instance) {
+      const mod = await modManager.inspectMod(target, instance);
+      if (modManager.isProtectedMod(mod, instance)) {
+        throw new Error("This mod is protected and cannot be removed.");
+      }
+    }
+  }
+
   await fs.rm(target, { force: true });
   return true;
 });

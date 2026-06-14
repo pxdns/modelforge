@@ -17,6 +17,10 @@ class MinecraftLauncher extends EventEmitter {
   }
 
   async launch(instance) {
+    if (this.modManager) {
+      await this.modManager.ensureProtectedMods(instance);
+    }
+
     const versionId = await this.resolveVersionId(instance);
     const versionJson = await this.versionManager.getVersionJson(versionId);
 

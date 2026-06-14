@@ -494,19 +494,34 @@ async function loadMods() {
     for (const mod of mods) {
       const row = document.createElement("tr");
       row.dataset.status = mod.status || "";
+      if (mod.protected) row.dataset.protected = "true";
       row.innerHTML = "<td></td><td></td><td></td><td></td><td></td><td></td>";
       row.children[0].textContent = mod.filename;
       row.children[1].textContent = mod.name;
       row.children[2].textContent = mod.version || "-";
       row.children[3].textContent = mod.loader;
-      row.children[4].textContent = mod.status;
-      const button = document.createElement("button");
-      button.textContent = "Delete";
-      button.addEventListener("click", async () => {
-        await window.launcherApi.deleteMod(mod.path);
+      row.children[4].textContent = mod.protected ? "Protected" : mod.status;
+
+      const toggleButton = document.createElement("button");
+      toggleButton.textContent = mod.protected ? "Locked" : (mod.status === "Enabled" ? "Disable" : "Enable");
+      toggleButton.disabled = Boolean(mod.protected);
+      toggleButton.addEventListener("click", async () => {
+        await window.launcherApi.setModEnabled(mod.path, mod.status !== "Enabled", state.selectedInstance?.id || null);
         await loadMods();
       });
-      row.children[5].append(button);
+
+      const deleteButton = document.createElement("button");
+      deleteButton.textContent = "Delete";
+      deleteButton.disabled = Boolean(mod.protected);
+      deleteButton.addEventListener("click", async () => {
+        await window.launcherApi.deleteMod(mod.path, state.selectedInstance?.id || null);
+        await loadMods();
+      });
+
+      const buttonWrap = document.createElement("div");
+      buttonWrap.className = "mod-actions";
+      buttonWrap.append(toggleButton, deleteButton);
+      row.children[5].append(buttonWrap);
       el.modsTableBody.append(row);
     }
   } catch (error) {
