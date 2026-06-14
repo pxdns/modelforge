@@ -1,7 +1,14 @@
 const path = require("path");
 const { defaultLauncherDir, defaultMinecraftDir } = require("./paths");
 const { ensureDir, readJson, writeJson } = require("./fsUtils");
-const { readLegacyCfg, writeLegacyCfg } = require("./legacyCompat");
+const {
+  readLegacyArgs,
+  readLegacyBootArgs,
+  readLegacyCfg,
+  writeLegacyArgs,
+  writeLegacyBootArgs,
+  writeLegacyCfg
+} = require("./legacyCompat");
 
 class SettingsStore {
   constructor() {
@@ -32,6 +39,8 @@ class SettingsStore {
       fullscreen: false,
       delayedStart: false,
       forceUpdate: false,
+      versionId: "",
+      backgroundPath: "",
       versionFilters: {
         release: true,
         remote: true,
@@ -52,6 +61,8 @@ class SettingsStore {
       theme: "dark"
     });
     const legacyCfg = await readLegacyCfg(path.join(this.launcherDir, "TL.cfg"));
+    const legacyArgs = await readLegacyArgs(path.join(this.launcherDir, "tl.args"));
+    const legacyBootArgs = await readLegacyBootArgs(path.join(this.launcherDir, "tl.bootargs"));
     this.settings = {
       ...jsonSettings,
       ...(legacyCfg ? {
@@ -64,6 +75,17 @@ class SettingsStore {
         windowHeight: Number(legacyCfg["Launcher.windowHeight"] || jsonSettings.windowHeight),
         fullscreen: String(legacyCfg["Launcher.fullscreen"] || jsonSettings.fullscreen) === "true",
         theme: legacyCfg["Launcher.theme"] || jsonSettings.theme
+      } : {}),
+      ...(legacyArgs ? {
+        gameDir: legacyArgs.directory || jsonSettings.gameDir,
+        javaArgs: legacyArgs.javaargs || jsonSettings.javaArgs,
+        minecraftArgs: legacyArgs.margs || jsonSettings.minecraftArgs,
+        offlineUsername: legacyArgs.usernane || legacyArgs.username || jsonSettings.offlineUsername,
+        versionId: legacyArgs.version || jsonSettings.versionId,
+        backgroundPath: legacyArgs.background || jsonSettings.backgroundPath
+      } : {}),
+      ...(legacyBootArgs ? {
+        bootJavaArgs: legacyBootArgs
       } : {})
     };
     if (process.platform === "darwin" && !String(this.settings.gameDir || "").trim()) {
@@ -93,6 +115,8 @@ class SettingsStore {
   async save() {
     await writeJson(this.filePath, this.settings);
     await writeLegacyCfg(path.join(this.launcherDir, "TL.cfg"), this.settings);
+    await writeLegacyArgs(path.join(this.launcherDir, "tl.args"), this.settings);
+    await writeLegacyBootArgs(path.join(this.launcherDir, "tl.bootargs"), this.settings);
   }
 }
 
