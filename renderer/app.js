@@ -40,7 +40,8 @@ const state = {
   instances: [],
   selectedInstance: null,
   launching: false,
-  detectedJava: null
+  detectedJava: null,
+  progressState: new Map()
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -348,7 +349,12 @@ async function loadVersions(forceRefresh) {
     renderVersionTable();
     appendLog(`Loaded ${state.versions.length} versions.`);
   } catch (error) {
-    appendLog(`Version load failed: ${error.message}`);
+    const message = "Minecraft versions are unavailable right now. Using cached data when possible.";
+    appendLog(message);
+    if (forceRefresh) {
+      el.progressLabel.textContent = "Version refresh unavailable";
+    }
+    console.warn("Version load failed", error);
   }
 }
 
@@ -365,6 +371,9 @@ function filterVersions(versions) {
 
 async function loadInstances() {
   state.instances = await window.launcherApi.listInstances();
+  if (state.selectedInstance) {
+    state.selectedInstance = state.instances.find((instance) => instance.id === state.selectedInstance.id) || null;
+  }
   if (!state.selectedInstance && state.instances.length > 0) {
     state.selectedInstance = state.instances[0];
   }
@@ -516,7 +525,7 @@ async function createInstance() {
   });
   state.selectedInstance = instance;
   await loadInstances();
-  showView("launcherView");
+  showView("playView");
   appendLog(`Created instance ${instance.name}.`);
 }
 
@@ -600,7 +609,7 @@ async function playSelectedInstance() {
     state.launching = false;
     el.playButton.disabled = false;
     el.stopButton.disabled = true;
-    appendLog(`Launch failed: ${error.message}`);
+    appendLog(formatUserFacingError(error, "Launch failed."));
   }
 }
 
@@ -612,10 +621,43 @@ async function stopLaunch() {
 function updateProgress(payload) {
   const total = Number(payload.total || 0);
   const current = Number(payload.current || 0);
+  const label = payload.label || "download";
   const percent = total > 0 ? Math.max(0, Math.min(100, Math.round((current / total) * 100))) : 0;
-  el.progressLabel.textContent = `${payload.phase}: ${payload.label}`;
+  const key = `${label}:${payload.phase || "downloading"}`;
+  const now = Date.now();
+  const previous = state.progressState.get(key) || { time: now, current: 0 };
+  state.progressState.set(key, { time: now, current });
+  const elapsed = Math.max(1, now - previous.time);
+  const delta = Math.max(0, current - previous.current);
+  const speed = delta > 0 ? (delta / elapsed) * 1000 : 0;
+  const remaining = total > 0 ? Math.max(0, total - current) : 0;
+  const eta = speed > 0 && remaining > 0 ? formatDuration((remaining / speed) * 1000) : "";
+  const phase = payload.phase === "done" ? "Completed" : payload.phase === "cached" ? "Cached" : "Downloading";
+  el.progressLabel.textContent = eta ? `${phase} ${label} · ${eta} left` : `${phase} ${label}`;
   el.progressPercent.textContent = `${percent}%`;
   el.downloadProgress.value = percent;
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) return `${seconds}s`;
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}
+
+function formatUserFacingError(error, prefix = "Something went wrong.") {
+  const message = String(error?.message || error || "");
+  if (/fetch failed/i.test(message) || /network/i.test(message)) {
+    return `${prefix} Check your connection and try again.`;
+  }
+  if (/Java was not found/i.test(message) || /No Java executable/i.test(message)) {
+    return `${prefix} No usable Java runtime was found.`;
+  }
+  if (/not found/i.test(message)) {
+    return `${prefix} The selected instance could not be found.`;
+  }
+  return `${prefix} ${message}`.trim();
 }
 
 function appendLog(message) {

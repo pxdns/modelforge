@@ -5,10 +5,31 @@ const path = require("path");
 const { Readable } = require("stream");
 const { ensureDir, pathExists } = require("./fsUtils");
 
+async function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchJson(url) {
-  const response = await fetch(url);
+  const response = await fetchWithRetry(url);
   if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
   return response.json();
+}
+
+async function fetchWithRetry(url, options = {}) {
+  const { retries = 3, retryDelay = 500, init = {} } = options;
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetch(url, init);
+    } catch (error) {
+      lastError = error;
+      if (attempt === retries) break;
+      await sleep(retryDelay * (attempt + 1));
+    }
+  }
+
+  throw lastError;
 }
 
 async function sha1File(filePath) {
@@ -23,7 +44,7 @@ async function sha1File(filePath) {
 }
 
 async function downloadFile(url, destination, options = {}) {
-  const { sha1, size, label = path.basename(destination), onProgress } = options;
+  const { sha1, size, label = path.basename(destination), onProgress, retries = 3 } = options;
 
   if (await pathExists(destination)) {
     if (!sha1 || (await sha1File(destination)) === sha1) {
@@ -34,26 +55,62 @@ async function downloadFile(url, destination, options = {}) {
 
   await ensureDir(path.dirname(destination));
   const tempPath = `${destination}.part`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+  let existingBytes = 0;
+  if (await pathExists(tempPath)) {
+    existingBytes = (await fsp.stat(tempPath)).size;
+  }
 
-  const total = Number(response.headers.get("content-length") || size || 0);
-  let current = 0;
-  const writer = fs.createWriteStream(tempPath);
-  const readable = typeof response.body.on === "function"
-    ? response.body
-    : Readable.fromWeb(response.body);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const headers = {};
+      const writeOptions = { flags: "w" };
+      if (existingBytes > 0) {
+        headers.Range = `bytes=${existingBytes}-`;
+        writeOptions.flags = "a";
+      }
 
-  await new Promise((resolve, reject) => {
-    readable.on("data", (chunk) => {
-      current += chunk.length;
-      onProgress?.({ label, phase: "downloading", current, total });
-    });
-    readable.on("error", reject);
-    writer.on("error", reject);
-    writer.on("finish", resolve);
-    readable.pipe(writer);
-  });
+      const response = await fetchWithRetry(url, { init: { headers }, retries: 0 });
+      if (!response.ok && response.status !== 206) {
+        throw new Error(`HTTP ${response.status} for ${url}`);
+      }
+
+      const supportsResume = response.status === 206;
+      if (existingBytes > 0 && !supportsResume) {
+        existingBytes = 0;
+        writeOptions.flags = "w";
+      }
+
+      const totalFromHeader = Number(response.headers.get("content-length") || 0);
+      const contentRange = response.headers.get("content-range");
+      const total = contentRange
+        ? Number(contentRange.split("/").pop() || 0)
+        : (existingBytes > 0 ? existingBytes + totalFromHeader : totalFromHeader || size || 0);
+      let current = existingBytes;
+      const writer = fs.createWriteStream(tempPath, writeOptions);
+      const readable = typeof response.body?.on === "function"
+        ? response.body
+        : Readable.fromWeb(response.body);
+
+      await new Promise((resolve, reject) => {
+        readable.on("data", (chunk) => {
+          current += chunk.length;
+          onProgress?.({ label, phase: "downloading", current, total });
+        });
+        readable.on("error", reject);
+        writer.on("error", reject);
+        writer.on("finish", resolve);
+        readable.pipe(writer, { end: true });
+      });
+
+      break;
+    } catch (error) {
+      if (attempt === retries) {
+        throw error;
+      }
+      await sleep(500 * (attempt + 1));
+      existingBytes = await pathExists(tempPath) ? (await fsp.stat(tempPath)).size : 0;
+    }
+  }
 
   if (sha1) {
     const actualSha1 = await sha1File(tempPath);
