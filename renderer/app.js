@@ -243,6 +243,7 @@ function renderSettings() {
   el.ramNumberInput.value = settings.ramMb;
   el.autoMemoryCheckbox.checked = settings.autoMemory;
   el.suggestServersCheckbox.checked = settings.suggestServers;
+  el.javaPathInput.value = settings.javaPath || "";
   el.dialogJavaPathInput.value = settings.javaPath || "";
   el.javaArgsInput.value = settings.javaArgs || "";
   el.updateSslCheckbox.checked = settings.updateSslCertificates;
@@ -278,7 +279,7 @@ function collectSettings() {
       oldReleases: el.filterOldReleases.checked
     },
     javaMode: el.javaModeSelect.value,
-    javaPath: el.dialogJavaPathInput.value.trim(),
+    javaPath: el.javaPathInput.value.trim() || el.dialogJavaPathInput.value.trim(),
     javaArgs: el.javaArgsInput.value.trim(),
     minecraftArgs: el.minecraftArgsInput.value.trim(),
     wrapperCommand: el.wrapperCommandInput.value.trim(),
@@ -318,6 +319,7 @@ async function selectGameDir() {
 }
 
 function openJavaDialog() {
+  el.dialogJavaPathInput.value = el.javaPathInput.value.trim() || state.settings.javaPath || "";
   document.querySelector(`input[name="javaChoice"][value="${el.javaModeSelect.value}"]`).checked = true;
   el.javaDialog.showModal();
 }
@@ -329,6 +331,7 @@ async function closeJavaDialog() {
     if (!ok) return;
   }
   el.javaModeSelect.value = selected;
+  el.javaPathInput.value = el.dialogJavaPathInput.value.trim();
   await saveSettings();
   el.javaDialog.close();
 }
@@ -514,7 +517,11 @@ async function openFolder(folderKey) {
 
 async function createInstance() {
   if (state.versions.length === 0) await loadVersions(false);
-  const latest = state.versions[0]?.id || "";
+  const latest = el.versionSelect.value || state.selectedInstance?.versionId || state.versions[0]?.id || "";
+  if (!latest) {
+    appendLog("No Minecraft version is available to create an instance.");
+    return;
+  }
   const instance = await window.launcherApi.createInstance({
     name: latest ? `Minecraft ${latest}` : "New Instance",
     versionId: latest,
@@ -538,13 +545,14 @@ async function createInstance() {
 }
 
 async function saveSelectedInstance(event) {
-  event.preventDefault();
+  event?.preventDefault?.();
   if (!state.selectedInstance) return;
   state.settings = collectSettings();
+  const versionId = el.versionSelect.value || state.selectedInstance.versionId || state.versions[0]?.id || "";
 
   const updated = await window.launcherApi.updateInstance(state.selectedInstance.id, {
     name: el.instanceNameInput.value.trim() || state.selectedInstance.name,
-    versionId: el.versionSelect.value,
+    versionId,
     ramMb: state.settings.ramMb,
     autoMemory: state.settings.autoMemory,
     loader: el.loaderSelect.value,
@@ -607,7 +615,7 @@ async function checkAndApplyJavaPath(javaPath, quiet) {
 
 async function playSelectedInstance() {
   if (!state.selectedInstance) return;
-  await saveSelectedInstance(new Event("submit"));
+  await saveSelectedInstance();
   state.launching = true;
   el.playButton.disabled = true;
   el.stopButton.disabled = false;

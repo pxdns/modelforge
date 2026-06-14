@@ -32,7 +32,11 @@ function createWindow() {
     height: 760,
     minWidth: 940,
     minHeight: 620,
-    backgroundColor: "#111318",
+    icon: path.join(__dirname, "../renderer/favicon.png"),
+    backgroundColor: "#00000000",
+    transparent: process.platform === "darwin",
+    vibrancy: process.platform === "darwin" ? "under-window" : undefined,
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : undefined,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

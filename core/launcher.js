@@ -17,7 +17,8 @@ class MinecraftLauncher extends EventEmitter {
   }
 
   async launch(instance) {
-    const versionJson = await this.versionManager.getVersionJson(instance.versionId);
+    const versionId = await this.resolveVersionId(instance);
+    const versionJson = await this.versionManager.getVersionJson(versionId);
 
     if (this.modManager) {
       const disabled = await this.modManager.quarantineIncompatibleMods(instance, versionJson);
@@ -26,19 +27,19 @@ class MinecraftLauncher extends EventEmitter {
       }
     }
 
-    await this.versionManager.ensureVersion(instance.versionId, {
+    await this.versionManager.ensureVersion(versionId, {
       onProgress: (payload) => this.emit("progress", payload)
     });
 
     await ensureDir(instance.minecraftDir);
 
-    const nativesDir = path.join(instance.instanceDir, "natives", instance.versionId);
+    const nativesDir = path.join(instance.instanceDir, "natives", versionId);
     await this.versionManager.extractNatives(versionJson, nativesDir);
 
     const javaPath = await this.resolveJavaPath(instance);
     const args = await this.buildArguments(instance, versionJson, nativesDir);
 
-    this.emit("log", `Launching ${instance.name} (${instance.versionId})`);
+    this.emit("log", `Launching ${instance.name} (${versionId})`);
     this.emit("log", `${javaPath} ${args.map(quoteArg).join(" ")}`);
 
     this.process = spawn(javaPath, args, {
@@ -88,6 +89,20 @@ class MinecraftLauncher extends EventEmitter {
     const detected = await detector.detect({ gameDir: this.settingsStore.get("gameDir") });
     if (detected.ok) return detected.javaPath;
     throw new Error(detected.message);
+  }
+
+  async resolveVersionId(instance) {
+    const current = String(instance?.versionId || "").trim();
+    if (current) return current;
+
+    const manifest = await this.versionManager.getManifest();
+    const firstAvailable = manifest.versions?.[0]?.id || "";
+    if (firstAvailable) {
+      this.emit("log", `Instance had no version set. Using ${firstAvailable}.`);
+      return firstAvailable;
+    }
+
+    throw new Error("No Minecraft version is available for this instance.");
   }
 
   async buildArguments(instance, versionJson, nativesDir) {

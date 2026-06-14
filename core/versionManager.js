@@ -31,6 +31,10 @@ class VersionManager {
       if (await pathExists(manifestPath)) {
         return readJson(manifestPath);
       }
+      const installedManifest = await this.getInstalledManifest();
+      if (installedManifest.versions.length > 0) {
+        return installedManifest;
+      }
       throw error;
     }
   }
@@ -53,6 +57,43 @@ class VersionManager {
       if (await pathExists(versionJsonPath)) return readJson(versionJsonPath);
       throw error;
     }
+  }
+
+  async getInstalledManifest() {
+    const versionsDir = path.join(this.gameDir, "versions");
+    const manifest = {
+      latest: {},
+      versions: []
+    };
+
+    let entries = [];
+    try {
+      entries = await fs.readdir(versionsDir, { withFileTypes: true });
+    } catch {
+      return manifest;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const versionId = entry.name;
+      const jsonPath = path.join(versionsDir, versionId, `${versionId}.json`);
+      if (!(await pathExists(jsonPath))) continue;
+      try {
+        const versionJson = await readJson(jsonPath);
+        manifest.versions.push({
+          id: versionJson.id || versionId,
+          type: versionJson.type || "release",
+          url: jsonPath,
+          time: versionJson.time || "",
+          releaseTime: versionJson.releaseTime || ""
+        });
+      } catch {
+        continue;
+      }
+    }
+
+    manifest.versions.sort((a, b) => String(b.releaseTime || b.time || "").localeCompare(String(a.releaseTime || a.time || "")));
+    return manifest;
   }
 
   async ensureVersion(versionId, { onProgress } = {}) {
