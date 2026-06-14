@@ -120,7 +120,7 @@ class ModManager {
   evaluateMod(mod, instance, versionJson) {
     const loader = normalizeLoader(instance.loader || this.settingsStore.get("loader") || "vanilla");
     const modLoader = normalizeLoader(mod.loader);
-    const versionId = versionJson?.id || instance.versionId || "";
+    const versionId = resolveMinecraftVersionId(versionJson, instance);
 
     if (loader === "vanilla") {
       if (modLoader !== "unknown") {
@@ -232,6 +232,26 @@ function compareVersions(a, b) {
     if (l !== r) return l - r;
   }
   return 0;
+}
+
+function resolveMinecraftVersionId(versionJson, instance) {
+  const candidates = [
+    versionJson?.jar,
+    versionJson?.inheritsFrom,
+    versionJson?.releaseTarget,
+    versionJson?.baseVersion,
+    versionJson?.minecraftVersion
+  ];
+
+  for (const candidate of candidates) {
+    const value = String(candidate || "").trim();
+    if (value) return value;
+  }
+
+  const raw = String(versionJson?.id || instance?.versionId || "").trim();
+  const match = raw.match(/\b\d+(?:\.\d+)+\b/);
+  if (match) return match[0];
+  return raw;
 }
 
 module.exports = { ModManager };
