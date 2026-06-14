@@ -45,6 +45,7 @@ class InstanceManager {
     const id = `${sanitizeName(payload.name)}-${crypto.randomBytes(3).toString("hex")}`;
     const instanceDir = path.join(this.instancesDir, id);
     const minecraftDir = this.resolveMinecraftDir({ id, versionId: payload.versionId, instanceDir });
+    const loader = this.normalizeLoader(payload.loader, payload.versionId);
     const instance = {
       id,
       name: payload.name || "New Instance",
@@ -59,7 +60,7 @@ class InstanceManager {
       windowHeight: Number(payload.windowHeight || this.settingsStore.get("windowHeight") || 530),
       fullscreen: payload.fullscreen ?? this.settingsStore.get("fullscreen") ?? false,
       offlineUsername: payload.offlineUsername || "Player",
-      loader: payload.loader || "Vanilla",
+      loader,
       javaMode: payload.javaMode || this.settingsStore.get("javaMode") || "recommended",
       instanceDir,
       minecraftDir,
@@ -81,7 +82,7 @@ class InstanceManager {
       ramMb: Number(patch.ramMb ?? instance.ramMb),
       windowWidth: Number(patch.windowWidth ?? instance.windowWidth ?? 925),
       windowHeight: Number(patch.windowHeight ?? instance.windowHeight ?? 530),
-      loader: patch.loader || instance.loader || "Vanilla",
+      loader: this.normalizeLoader(patch.loader || instance.loader || "Vanilla", patch.versionId || instance.versionId),
       javaMode: patch.javaMode || instance.javaMode || this.settingsStore.get("javaMode") || "recommended",
       updatedAt: new Date().toISOString()
     };
@@ -95,9 +96,16 @@ class InstanceManager {
   normalizeInstance(instance) {
     const updated = {
       ...instance,
+      loader: this.normalizeLoader(instance.loader, instance.versionId),
       minecraftDir: this.resolveMinecraftDir(instance)
     };
     return updated;
+  }
+
+  normalizeLoader(loader, versionId = "") {
+    const inferred = inferLoaderFromVersionId(versionId);
+    if (inferred) return inferred;
+    return String(loader || "Vanilla");
   }
 
   resolveMinecraftDir(instance) {
@@ -118,6 +126,16 @@ class InstanceManager {
     await ensureDir(path.join(instance.minecraftDir, "config"));
     await ensureDir(path.join(instance.minecraftDir, "saves"));
   }
+}
+
+function inferLoaderFromVersionId(versionId) {
+  const id = String(versionId || "").toLowerCase();
+  if (!id) return "";
+  if (id.includes("fabric")) return "Fabric";
+  if (id.includes("forge")) return "Forge";
+  if (id.includes("neoforge")) return "NeoForge";
+  if (id.includes("quilt")) return "Quilt";
+  return "Vanilla";
 }
 
 module.exports = { InstanceManager };

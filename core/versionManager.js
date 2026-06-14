@@ -134,28 +134,28 @@ class VersionManager {
       if (!isAllowed(library.rules)) continue;
       const artifact = library.downloads?.artifact;
       if (artifact) {
-        downloads.push(this.downloadLibraryArtifact(artifact, onProgress));
+        downloads.push(this.downloadLibraryArtifact(library, artifact, onProgress));
       }
 
       const nativesKey = library.natives?.[currentOsName()];
       const classifier = nativesKey ? nativesKey.replace("${arch}", process.arch === "x64" ? "64" : "32") : null;
       const nativeArtifact = classifier ? library.downloads?.classifiers?.[classifier] : null;
       if (nativeArtifact) {
-        downloads.push(this.downloadLibraryArtifact(nativeArtifact, onProgress));
+        downloads.push(this.downloadLibraryArtifact(library, nativeArtifact, onProgress, classifier));
       }
     }
 
     await runLimited(downloads, 8);
   }
 
-  downloadLibraryArtifact(artifact, onProgress) {
+  downloadLibraryArtifact(library, artifact, onProgress, classifier = null) {
     return async () => downloadFile(
       artifact.url,
-      path.join(this.gameDir, "libraries", artifact.path),
+      path.join(this.gameDir, "libraries", resolveArtifactPath(library, artifact, classifier)),
       {
         sha1: artifact.sha1,
         size: artifact.size,
-        label: artifact.path,
+        label: resolveArtifactPath(library, artifact, classifier),
         onProgress
       }
     );
@@ -199,7 +199,7 @@ class VersionManager {
     for (const library of versionJson.libraries || []) {
       if (!isAllowed(library.rules)) continue;
       const artifact = library.downloads?.artifact;
-      if (artifact) entries.push(path.join(this.gameDir, "libraries", artifact.path));
+      if (artifact) entries.push(path.join(this.gameDir, "libraries", resolveArtifactPath(library, artifact)));
     }
     entries.push(path.join(this.gameDir, "versions", versionJson.id, `${versionJson.id}.jar`));
     return entries;
@@ -215,7 +215,7 @@ class VersionManager {
       const artifact = library.downloads?.classifiers?.[classifier];
       if (artifact) {
         artifacts.push({
-          path: path.join(this.gameDir, "libraries", artifact.path),
+          path: path.join(this.gameDir, "libraries", resolveArtifactPath(library, artifact, classifier)),
           exclude: library.extract?.exclude || []
         });
       }
@@ -243,6 +243,25 @@ async function runLimited(tasks, limit) {
     }
   });
   await Promise.all(workers);
+}
+
+function resolveArtifactPath(library, artifact, classifier = null) {
+  if (artifact?.path) return artifact.path;
+  if (artifact?.url) {
+    try {
+      const urlPath = new URL(artifact.url).pathname.replace(/^\/+/, "");
+      if (urlPath) return urlPath;
+    } catch {
+      // Fall back below.
+    }
+  }
+
+  const coords = String(library?.name || "").split(":");
+  const group = coords[0] || "unknown";
+  const name = coords[1] || "library";
+  const version = coords[2] || "unknown";
+  const filename = classifier ? `${name}-${version}-${classifier}.jar` : `${name}-${version}.jar`;
+  return path.join(...group.split("."), name, version, filename);
 }
 
 async function extractZip(zipPath, destination, excludes) {
