@@ -14,6 +14,8 @@ const DEFAULTS = {
   fullscreen: false,
   delayedStart: false,
   forceUpdate: false,
+  proxyEnabled: false,
+  proxyServer: "https://127.0.0.1:8080",
   versionFilters: {
     release: true,
     remote: true,
@@ -128,7 +130,9 @@ const el = {
   selectedInstanceLoader: $("#selectedInstanceLoader"),
   selectedInstanceRam: $("#selectedInstanceRam"),
   selectedInstanceJava: $("#selectedInstanceJava"),
-  selectedInstanceFolder: $("#selectedInstanceFolder")
+  selectedInstanceFolder: $("#selectedInstanceFolder"),
+  proxyEnabledCheckbox: $("#proxyEnabledCheckbox"),
+  proxyServerInput: $("#proxyServerInput")
 };
 
 async function boot() {
@@ -256,6 +260,8 @@ function renderSettings() {
   el.improvedJvmSelect.value = settings.improvedJvmArguments;
   el.minecraftArgsInput.value = settings.minecraftArgs || "";
   el.wrapperCommandInput.value = settings.wrapperCommand || "";
+  el.proxyEnabledCheckbox.checked = settings.proxyEnabled;
+  el.proxyServerInput.value = settings.proxyServer || "https://127.0.0.1:8080";
 }
 
 function collectSettings() {
@@ -293,7 +299,9 @@ function collectSettings() {
     improvedJvmArguments: el.improvedJvmSelect.value,
     ramMb: Number(el.ramNumberInput.value || 4096),
     autoMemory: el.autoMemoryCheckbox.checked,
-    suggestServers: el.suggestServersCheckbox.checked
+    suggestServers: el.suggestServersCheckbox.checked,
+    proxyEnabled: el.proxyEnabledCheckbox.checked,
+    proxyServer: el.proxyServerInput.value.trim() || "https://127.0.0.1:8080"
   });
 }
 
@@ -564,6 +572,8 @@ async function createInstance() {
     windowWidth: state.settings.windowWidth,
     windowHeight: state.settings.windowHeight,
     fullscreen: state.settings.fullscreen,
+    proxyEnabled: state.settings.proxyEnabled,
+    proxyServer: state.settings.proxyServer,
     offlineUsername: el.usernameInput.value.trim() || state.settings.offlineUsername || "Player"
   });
   state.selectedInstance = instance;
@@ -592,6 +602,8 @@ async function saveSelectedInstance(event) {
     windowWidth: state.settings.windowWidth,
     windowHeight: state.settings.windowHeight,
     fullscreen: state.settings.fullscreen,
+    proxyEnabled: state.settings.proxyEnabled,
+    proxyServer: state.settings.proxyServer,
     offlineUsername: el.usernameInput.value.trim() || "Player"
   });
   await window.launcherApi.updateSettings(state.settings);
