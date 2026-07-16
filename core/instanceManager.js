@@ -55,6 +55,9 @@ class InstanceManager {
       javaPath: payload.javaPath || "",
       javaArgs: payload.javaArgs || this.settingsStore.get("javaArgs") || "",
       minecraftArgs: payload.minecraftArgs || this.settingsStore.get("minecraftArgs") || "",
+      proxyEnabled: payload.proxyEnabled ?? this.settingsStore.get("proxyEnabled") ?? false,
+      proxyServer: payload.proxyServer || this.settingsStore.get("proxyServer") || "127.0.0.1:8080",
+      proxyArgs: payload.proxyArgs || this.settingsStore.get("proxyArgs") || "",
       wrapperCommand: payload.wrapperCommand || this.settingsStore.get("wrapperCommand") || "",
       windowWidth: Number(payload.windowWidth || this.settingsStore.get("windowWidth") || 925),
       windowHeight: Number(payload.windowHeight || this.settingsStore.get("windowHeight") || 530),
@@ -84,6 +87,9 @@ class InstanceManager {
       windowHeight: Number(patch.windowHeight ?? instance.windowHeight ?? 530),
       loader: this.normalizeLoader(patch.loader || instance.loader || "Vanilla", patch.versionId || instance.versionId),
       javaMode: patch.javaMode || instance.javaMode || this.settingsStore.get("javaMode") || "recommended",
+      proxyEnabled: patch.proxyEnabled ?? instance.proxyEnabled ?? this.settingsStore.get("proxyEnabled") ?? false,
+      proxyServer: patch.proxyServer || instance.proxyServer || this.settingsStore.get("proxyServer") || "127.0.0.1:8080",
+      proxyArgs: patch.proxyArgs || instance.proxyArgs || this.settingsStore.get("proxyArgs") || "",
       updatedAt: new Date().toISOString()
     };
     const updated = this.normalizeInstance(merged);
@@ -97,7 +103,10 @@ class InstanceManager {
     const updated = {
       ...instance,
       loader: this.normalizeLoader(instance.loader, instance.versionId),
-      minecraftDir: this.resolveMinecraftDir(instance)
+      minecraftDir: this.resolveMinecraftDir(instance),
+      proxyEnabled: instance.proxyEnabled ?? this.settingsStore.get("proxyEnabled") ?? false,
+      proxyServer: instance.proxyServer || this.settingsStore.get("proxyServer") || "127.0.0.1:8080",
+      proxyArgs: instance.proxyArgs || this.settingsStore.get("proxyArgs") || ""
     };
     return updated;
   }

@@ -133,6 +133,14 @@ class MinecraftLauncher extends EventEmitter {
     const gameArgs = versionJson.arguments?.game
       ? expandArguments(versionJson.arguments.game, replacements)
       : expandLegacyGameArguments(versionJson.minecraftArguments || "", replacements);
+    if (instance.proxyEnabled) {
+      const proxy = parseProxyEndpoint(instance.proxyServer || this.settingsStore.get("proxyServer") || "127.0.0.1:8080");
+      gameArgs.push("--proxyHost", proxy.host);
+      gameArgs.push("--proxyPort", String(proxy.port));
+      if (instance.proxyArgs || this.settingsStore.get("proxyArgs")) {
+        gameArgs.push(...splitArgs(instance.proxyArgs || this.settingsStore.get("proxyArgs") || ""));
+      }
+    }
     if (instance.fullscreen) {
       gameArgs.push("--fullscreen");
     }
@@ -203,6 +211,20 @@ function expandLegacyGameArguments(argumentString, replacements) {
 function splitArgs(value) {
   const matches = String(value || "").match(/"([^"]*)"|'([^']*)'|[^\s]+/g) || [];
   return matches.map((item) => item.replace(/^["']|["']$/g, ""));
+}
+
+function parseProxyEndpoint(value) {
+  const text = String(value || "127.0.0.1:8080").trim() || "127.0.0.1:8080";
+  const lastColon = text.lastIndexOf(":");
+  if (lastColon <= 0 || lastColon === text.length - 1) {
+    return { host: "127.0.0.1", port: 8080 };
+  }
+  const host = text.slice(0, lastColon).trim() || "127.0.0.1";
+  const port = Number.parseInt(text.slice(lastColon + 1).trim(), 10);
+  return {
+    host,
+    port: Number.isFinite(port) && port > 0 ? port : 8080
+  };
 }
 
 function replaceTokens(value, replacements) {

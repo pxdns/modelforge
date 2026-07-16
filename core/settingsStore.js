@@ -31,6 +31,9 @@ class SettingsStore {
       javaPath: "",
       javaArgs: "",
       minecraftArgs: "",
+      proxyEnabled: false,
+      proxyServer: "127.0.0.1:8080",
+      proxyArgs: "",
       wrapperCommand: "",
       updateSslCertificates: true,
       improvedJvmArguments: "default",
@@ -74,7 +77,10 @@ class SettingsStore {
         windowWidth: Number(legacyCfg["Launcher.windowWidth"] || jsonSettings.windowWidth),
         windowHeight: Number(legacyCfg["Launcher.windowHeight"] || jsonSettings.windowHeight),
         fullscreen: String(legacyCfg["Launcher.fullscreen"] || jsonSettings.fullscreen) === "true",
-        theme: legacyCfg["Launcher.theme"] || jsonSettings.theme
+        theme: legacyCfg["Launcher.theme"] || jsonSettings.theme,
+        proxyEnabled: String(legacyCfg["Launcher.proxyEnabled"] || jsonSettings.proxyEnabled) === "true",
+        proxyServer: legacyCfg["Launcher.proxyServer"] || jsonSettings.proxyServer,
+        proxyArgs: legacyCfg["Launcher.proxyArgs"] || jsonSettings.proxyArgs
       } : {}),
       ...(legacyArgs ? {
         gameDir: legacyArgs.directory || jsonSettings.gameDir,
@@ -90,6 +96,9 @@ class SettingsStore {
     };
     if (process.platform === "darwin" && !String(this.settings.gameDir || "").trim()) {
       this.settings.gameDir = defaultMinecraftDir();
+    }
+    if (!String(this.settings.proxyServer || "").trim()) {
+      this.settings.proxyServer = "127.0.0.1:8080";
     }
     await this.save();
   }

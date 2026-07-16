@@ -19,7 +19,10 @@ function serializeLegacyCfg(settings) {
     `windowWidth=${settings.windowWidth || ""}`,
     `windowHeight=${settings.windowHeight || ""}`,
     `fullscreen=${settings.fullscreen ? "true" : "false"}`,
-    `theme=${settings.theme || "dark"}`
+    `theme=${settings.theme || "dark"}`,
+    `proxyEnabled=${settings.proxyEnabled ? "true" : "false"}`,
+    `proxyServer=${settings.proxyServer || ""}`,
+    `proxyArgs=${settings.proxyArgs || ""}`
   ];
   return `${lines.join("\n")}\n`;
 }

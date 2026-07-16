@@ -6,6 +6,9 @@ const DEFAULTS = {
   javaPath: "",
   javaArgs: "",
   minecraftArgs: "",
+  proxyEnabled: false,
+  proxyServer: "127.0.0.1:8080",
+  proxyArgs: "",
   wrapperCommand: "",
   updateSslCertificates: true,
   improvedJvmArguments: "default",
@@ -112,6 +115,9 @@ const el = {
   updateSslCheckbox: $("#updateSslCheckbox"),
   improvedJvmSelect: $("#improvedJvmSelect"),
   minecraftArgsInput: $("#minecraftArgsInput"),
+  useProxyCheckbox: $("#useProxyCheckbox"),
+  proxyServerInput: $("#proxyServerInput"),
+  proxyArgsInput: $("#proxyArgsInput"),
   wrapperCommandInput: $("#wrapperCommandInput"),
   doneJavaButton: $("#doneJavaButton"),
   versionTableBody: $("#versionTableBody"),
@@ -159,6 +165,11 @@ function wireEvents() {
   el.openJavaSettingsButton.addEventListener("click", openJavaDialog);
   el.dialogBrowseJavaButton.addEventListener("click", selectJavaForDialog);
   el.doneJavaButton.addEventListener("click", closeJavaDialog);
+  el.useProxyCheckbox.addEventListener("change", () => {
+    if (el.useProxyCheckbox.checked && !el.proxyServerInput.value.trim()) {
+      el.proxyServerInput.value = "127.0.0.1:8080";
+    }
+  });
   el.createInstanceButton.addEventListener("click", createInstance);
   el.refreshVersionsButton.addEventListener("click", async () => loadVersions(true));
   el.refreshVersionsButtonSecondary.addEventListener("click", async () => loadVersions(true));
@@ -259,6 +270,9 @@ function renderSettings() {
   el.updateSslCheckbox.checked = settings.updateSslCertificates;
   el.improvedJvmSelect.value = settings.improvedJvmArguments;
   el.minecraftArgsInput.value = settings.minecraftArgs || "";
+  el.useProxyCheckbox.checked = Boolean(settings.proxyEnabled);
+  el.proxyServerInput.value = settings.proxyServer || "127.0.0.1:8080";
+  el.proxyArgsInput.value = settings.proxyArgs || "";
   el.wrapperCommandInput.value = settings.wrapperCommand || "";
   el.proxyEnabledCheckbox.checked = settings.proxyEnabled;
   el.proxyServerInput.value = settings.proxyServer || "https://127.0.0.1:8080";
@@ -294,6 +308,9 @@ function collectSettings() {
     javaPath: el.javaPathInput.value.trim() || el.dialogJavaPathInput.value.trim(),
     javaArgs: el.javaArgsInput.value.trim(),
     minecraftArgs: el.minecraftArgsInput.value.trim(),
+    proxyEnabled: el.useProxyCheckbox.checked,
+    proxyServer: el.proxyServerInput.value.trim() || "127.0.0.1:8080",
+    proxyArgs: el.proxyArgsInput.value.trim(),
     wrapperCommand: el.wrapperCommandInput.value.trim(),
     updateSslCertificates: el.updateSslCheckbox.checked,
     improvedJvmArguments: el.improvedJvmSelect.value,
@@ -568,6 +585,9 @@ async function createInstance() {
     javaPath: state.settings.javaPath,
     javaArgs: state.settings.javaArgs,
     minecraftArgs: state.settings.minecraftArgs,
+    proxyEnabled: state.settings.proxyEnabled,
+    proxyServer: state.settings.proxyServer,
+    proxyArgs: state.settings.proxyArgs,
     wrapperCommand: state.settings.wrapperCommand,
     windowWidth: state.settings.windowWidth,
     windowHeight: state.settings.windowHeight,
@@ -598,6 +618,9 @@ async function saveSelectedInstance(event) {
     javaPath: el.javaPathInput.value.trim() || state.settings.javaPath,
     javaArgs: state.settings.javaArgs,
     minecraftArgs: state.settings.minecraftArgs,
+    proxyEnabled: state.settings.proxyEnabled,
+    proxyServer: state.settings.proxyServer,
+    proxyArgs: state.settings.proxyArgs,
     wrapperCommand: state.settings.wrapperCommand,
     windowWidth: state.settings.windowWidth,
     windowHeight: state.settings.windowHeight,
